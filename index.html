@@ -195,7 +195,7 @@ table.ed td.t{min-width:40px;text-align:center;font-weight:800;font-size:14px}
 </header>
 <main id="main"></main>
 <button class="fab" id="fab" aria-label="기록 추가">＋</button>
-<input type="file" id="fileIn" accept="image/*" class="hidden">
+<input type="file" id="fileIn" accept="image/*" multiple class="hidden">
 <input type="file" id="importIn" accept="application/json,.json" class="hidden">
 <div id="layer"></div>
 
@@ -211,6 +211,12 @@ const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': 
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 const sum = a => a.reduce((s, v) => s + (v == null || isNaN(v) ? 0 : +v), 0);
 const clone = o => JSON.parse(JSON.stringify(o));
+const normLogo = s => String(s || '').toLowerCase().replace(/[^a-z0-9가-힣]/g, '');
+function similarity(a, b) { // 1 - normalized Levenshtein distance
+  if (!a || !b) return 0; const m = a.length, n = b.length; let prev = Array.from({ length: n + 1 }, (_, j) => j);
+  for (let i = 1; i <= m; i++) { const cur = [i]; for (let j = 1; j <= n; j++) cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1)); prev = cur; }
+  return 1 - prev[n] / Math.max(m, n);
+}
 const normName = s => String(s || '').replace(/[\s*＊·.]/g, '').toLowerCase();
 function toast(msg, ms = 2400) {
   const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg;
@@ -399,7 +405,7 @@ $('#main').addEventListener('click', async e => {
 function closeLayer() { $('#layer').innerHTML = ''; }
 function openAddMenu() {
   $('#layer').innerHTML = `<div class="backdrop" id="bk"></div><div class="menu">
-    <button id="mImg">📷 스코어카드 이미지로 추가<small>사진/스크린샷에서 날짜·티업·타수를 읽어옵니다</small></button>
+    <button id="mImg">📷 스코어카드 이미지로 추가<small>여러 장을 한 번에 선택할 수 있습니다 · 날짜·티업·골프장·타수 자동 인식</small></button>
     <button id="mManual">✏️ 직접 입력<small>${S.selected} 날짜로 빈 스코어카드를 엽니다</small></button>
     <button id="mCancel" style="text-align:center">취소</button></div>`;
   $('#bk').onclick = $('#mCancel').onclick = closeLayer;
@@ -419,13 +425,19 @@ function blankRound() {
 /* ================= editor ================= */
 let ED = null; // { r, mode, card, warn:Set }
 function openEditor(r, extra = {}) {
-  ED = { r, mode: extra.mode || 'abs', card: extra.card || null, warn: new Set(extra.warn || []), notes: extra.notes || [] };
-  $('#layer').innerHTML = `<div class="sheet" id="ed">
-    <div class="sheet-head"><button id="edCancel">취소</button><h3>${r.id ? '라운드 편집' : '새 라운드'}</h3><button id="edSave">저장</button></div>
-    <div class="sheet-body" id="edBody"></div></div>`;
-  $('#edCancel').onclick = () => { if (confirm('저장하지 않고 닫을까요?')) closeLayer(); };
-  $('#edSave').onclick = saveEditor;
-  renderEditor();
+  return new Promise(done => {
+    ED = { r, mode: extra.mode || 'abs', card: extra.card || null, warn: new Set(extra.warn || []), notes: extra.notes || [], done };
+    const queued = extra.remaining > 0;
+    $('#layer').innerHTML = `<div class="sheet" id="ed">
+      <div class="sheet-head"><button id="edCancel">${queued ? '건너뛰기' : '취소'}</button><h3>${r.id ? '라운드 편집' : '새 라운드'}${extra.tag || ''}</h3><button id="edSave">저장</button></div>
+      <div class="sheet-body" id="edBody"></div></div>`;
+    $('#edCancel').onclick = () => {
+      if (!confirm(queued ? '이 카드를 저장하지 않고 다음 카드로 넘어갈까요?' : '저장하지 않고 닫을까요?')) return;
+      closeLayer(); render(); done('skip');
+    };
+    $('#edSave').onclick = saveEditor;
+    renderEditor();
+  });
 }
 function renderEditor() {
   const r = ED.r;
@@ -546,12 +558,17 @@ async function saveEditor() {
   const i = S.rounds.findIndex(x => x.id === r.id); if (i >= 0) S.rounds[i] = r; else S.rounds.push(r);
   // remember course → club mapping, and my name
   const key = r.courses.map(c => c.name).filter(Boolean).join('|');
-  if (key && r.club) { S.clubMap[key] = r.club; r.courses.forEach(c => { if (c.name) S.clubMap[c.name] = r.club; }); DB.set('clubMap', S.clubMap).catch(() => {}); }
+  if (r.club && (key || r.logo)) {
+    if (key) { S.clubMap[key] = r.club; r.courses.forEach(c => { if (c.name) S.clubMap[c.name] = r.club; }); }
+    if (r.logo && normLogo(r.logo).length >= 3) S.clubMap['logo:' + normLogo(r.logo)] = r.club;
+    DB.set('clubMap', S.clubMap).catch(() => {});
+  }
   const me = r.players.find(p => p.me);
   if (me && me.name && !S.settings.myName) { S.settings.myName = me.name; DB.set('settings', S.settings).catch(() => {}); }
   closeLayer();
   S.selected = r.date; S.view = 'day'; saveUi(); const d = parseYmd(r.date); S.cursor = new Date(d.getFullYear(), d.getMonth(), 1);
   render(); toast('저장했습니다');
+  ED.done && ED.done('saved');
 }
 
 /* ================= settings ================= */
@@ -632,7 +649,7 @@ function showProgress(title) {
 /* ================= OCR (scorecard image → round) ================= */
 const OCR = (() => {
   const LIB = 'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js';
-  let libP = null, numW = null, numW8 = null, txtW = null;
+  let libP = null, numW = null, numW8 = null, txtW = null, logoW = null;
   function loadLib() {
     if (window.Tesseract) return Promise.resolve(window.Tesseract);
     return libP || (libP = new Promise((res, rej) => {
@@ -657,9 +674,14 @@ const OCR = (() => {
       numW8 = w;
     }
     if (!txtW) {
-      const w = await withTimeout(T.createWorker(['kor', 'eng'], 1, { logger: log('한글 인식기') }), 180000, '한글 데이터 다운로드 시간 초과 (네트워크 확인)');
+      const w = await withTimeout(T.createWorker('kor', 1, { logger: log('한글 인식기') }), 180000, '한글 데이터 다운로드 시간 초과 (네트워크 확인)');
       await w.setParameters({ tessedit_pageseg_mode: '7' });
       txtW = w;
+    }
+    if (!logoW) { // English logo / wordmark (e.g. "GOLD CC")
+      const w = await withTimeout(T.createWorker('eng', 1), 120000, '인식 엔진 준비 시간 초과 (네트워크 확인)');
+      await w.setParameters({ tessedit_pageseg_mode: '11' });
+      logoW = w;
     }
   }
 
@@ -866,6 +888,43 @@ const OCR = (() => {
     if (c.minus || (/-\s*\d/.test(txt) && c.comps >= 2)) v = -Math.abs(v);
     return { v, all: nums.map(Number), txt };
   }
+  // glyph pieces whose centre lies right of `cut` (the end of the Hangul part), drawn on a fresh canvas
+  function tailCanvas(cv, cut) {
+    const w = cv.width, h = cv.height, g = cv.getContext('2d').getImageData(0, 0, w, h).data;
+    const ink = new Uint8Array(w * h); for (let i = 0; i < w * h; i++) ink[i] = g[i * 4] < 128 ? 1 : 0;
+    const lab = new Int32Array(w * h), keep = []; let id = 0;
+    for (let s0 = 0; s0 < w * h; s0++) {
+      if (!ink[s0] || lab[s0]) continue;
+      id++; const st = [s0]; lab[s0] = id; let x0 = w, x1 = 0, n = 0;
+      while (st.length) {
+        const q = st.pop(), qx = q % w, qy = (q / w) | 0; n++; if (qx < x0) x0 = qx; if (qx > x1) x1 = qx;
+        for (const k of [q - 1, q + 1, q - w, q + w]) if (k >= 0 && k < w * h && ink[k] && !lab[k] && Math.abs((k % w) - qx) <= 1) { lab[k] = id; st.push(k); }
+      }
+      if ((x0 + x1) / 2 > cut && n > 20) keep.push(id);
+    }
+    if (!keep.length) return null;
+    const ks = new Set(keep); let bx0 = w, bx1 = 0;
+    for (let i = 0; i < w * h; i++) if (ks.has(lab[i])) { const x = i % w; if (x < bx0) bx0 = x; if (x > bx1) bx1 = x; }
+    const tw = bx1 - bx0 + 1, out = document.createElement('canvas'); out.width = tw + 24; out.height = h;
+    const ox = out.getContext('2d'), im = ox.createImageData(out.width, h);
+    for (let y = 0; y < h; y++) for (let x = 0; x < out.width; x++) {
+      const sx = x - 12 + bx0, on = sx >= bx0 && sx <= bx1 && ks.has(lab[y * w + sx]), o = (y * out.width + x) * 4;
+      im.data[o] = im.data[o + 1] = im.data[o + 2] = on ? 0 : 255; im.data[o + 3] = 255;
+    }
+    ox.putImageData(im, 0, 0); return out;
+  }
+  // common course-name suffixes; a partial read like "UT" snaps to "OUT"
+  const SUFFIXES = ['IN', 'OUT', 'EAST', 'WEST', 'SOUTH', 'NORTH', 'LAKE', 'HILL', 'VALLEY', 'SKY', 'OCEAN', 'MOUNTAIN', 'FOREST', 'PALACE', 'CASTLE', 'GARDEN', 'STAR', 'SUN', 'MOON'];
+  function snapSuffix(t) {
+    const u = t.toUpperCase(); if (!u || /\d/.test(u)) return t;
+    if (SUFFIXES.includes(u)) return u;
+    let best = '', bs = 0;
+    for (const d of SUFFIXES) {
+      const sc = d.endsWith(u) && u.length >= 2 && d.length - u.length <= 1 ? 0.9 : similarity(u, d);
+      if (sc > bs) { bs = sc; best = d; }
+    }
+    return bs >= 0.6 ? best : u;
+  }
   async function readText(A, x0, x1, y0, y1, light) {
     let c = cellCanvas(A, x0, x1, y0, y1, light);
     if (!c) return '';
@@ -876,6 +935,22 @@ const OCR = (() => {
     }
     const { data } = await txtW.recognize(c.canvas);
     let t = (data.text || '').replace(/\s+/g, '').replace(/[^0-9A-Za-z가-힣*＊()]/g, '');
+    // mixed labels like "챔피언IN": Korean model for the Hangul part, English model for what follows it
+    const syms = data.symbols || (data.words || []).flatMap(w => w.symbols || []);
+    let hx = -1, head = '', li = -1;
+    syms.forEach((sy, i) => { if (/[가-힣]/.test(sy.text)) li = i; });
+    if (li >= 0) hx = syms[li].bbox.x1;
+    if (hx > 0) {
+      head = syms.slice(0, li + 1).map(sy => sy.text).join('').replace(/[^가-힣]/g, '');
+      const tc = suffix ? null : tailCanvas(c.canvas, hx);
+      if (tc) {
+        await logoW.setParameters({ tessedit_pageseg_mode: '7' });
+        try {
+          const lt = ((await logoW.recognize(tc)).data.text || '').replace(/[^A-Za-z0-9]/g, '');
+          t = head + snapSuffix(lt);
+        } finally { await logoW.setParameters({ tessedit_pageseg_mode: '11' }); }
+      } else if (head && !suffix) t = head;
+    }
     if (suffix) t = t.replace(/[*＊]+$/, '') + suffix;
     return t;
   }
@@ -883,9 +958,28 @@ const OCR = (() => {
     if (A.topY < 20) return '';
     const c = document.createElement('canvas'); c.width = A.W; c.height = A.topY;
     c.getContext('2d').drawImage(A.canvas, 0, 0, A.W, A.topY, 0, 0, A.W, A.topY);
-    await txtW.setParameters({ tessedit_pageseg_mode: '11' });
-    try { const { data } = await txtW.recognize(c); return data.text || ''; }
-    finally { await txtW.setParameters({ tessedit_pageseg_mode: '7' }); }
+    const { data } = await logoW.recognize(c); // English model: DATE / TEE OFF / AM 07:59
+    return data.text || '';
+  }
+  // golf club wordmark at top-left of the card
+  async function readLogo(A) {
+    if (A.topY < 30) return null;
+    const cw = Math.round(A.W * 0.5), ch = A.topY, cands = [];
+    for (const sc of [1, 2]) {
+      const c = document.createElement('canvas'); c.width = cw * sc; c.height = ch * sc;
+      const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height);
+      x.filter = 'grayscale(1) contrast(1.6)'; x.drawImage(A.canvas, 0, 0, cw, ch, 0, 0, cw * sc, ch * sc);
+      const { data } = await logoW.recognize(c);
+      for (const l of data.lines || []) {
+        const t = l.text.replace(/[^A-Za-z0-9&' .\-]/g, ' ').replace(/\s+/g, ' ').trim();
+        const letters = (t.match(/[A-Za-z]/g) || []).length;
+        if (letters < 3 || letters / t.replace(/ /g, '').length < 0.75 || l.confidence < 50) continue;
+        if (/^(golf|resort|golf ?& ?resort|country ?club|the)$/i.test(t)) continue;
+        cands.push({ text: t, conf: l.confidence, score: l.confidence + letters * 2 });
+      }
+    }
+    cands.sort((a, b) => b.score - a.score);
+    return cands[0] || null;
   }
   function parseTop(text) {
     const res = {}; const t = text.replace(/[Oo]/g, m => m).replace(/\s+/g, ' ');
@@ -913,6 +1007,7 @@ const OCR = (() => {
     const secs = A.sections, totalCells = secs.reduce((s, x) => s + (x.rows.length + 1) * (x.holes.length + 2), 0) + 1;
     let done = 0; const tick = () => progress(`스코어 읽는 중… ${Math.round(++done / totalCells * 100)}%`, 0.2 + 0.8 * done / totalCells);
     const top = parseTop(await readTop(A)); tick();
+    let logo = null; try { logo = await readLogo(A); } catch (e) {}
     const R = [];
     for (const s of secs) {
       const sec = { name: '', par: [], parTotal: null, rows: [] };
@@ -930,12 +1025,12 @@ const OCR = (() => {
       }
       R.push(sec);
     }
-    return { image, top, sections: R };
+    return { image, top, logo, sections: R };
   }
 
   /* convert recognition result → editable round */
   function toRound(res, fallbackDate, myName) {
-    const r = { id: null, date: res.top?.date || fallbackDate, time: res.top?.time || '', club: '', memo: '', image: res.image, courses: [], players: [] };
+    const r = { id: null, date: res.top?.date || fallbackDate, time: res.top?.time || '', club: '', memo: '', image: res.image, logo: res.logo?.text || '', courses: [], players: [] };
     const warn = [], notes = [], card = [];
     if (!res.sections || !res.sections.length) {
       notes.push('⚠️ ' + (res.error || '스코어 표를 인식하지 못했습니다') + ' — 직접 입력해 주세요.');
@@ -983,39 +1078,62 @@ const OCR = (() => {
     let mi = mine ? r.players.findIndex(p => normName(p.name) && (normName(p.name) === mine || normName(p.name).includes(mine) || mine.includes(normName(p.name)))) : -1;
     if (mi < 0) mi = 0;
     if (r.players[mi]) r.players[mi].me = true;
-    // club guess from remembered course names
+    // club name: 1) remembered logo (fuzzy)  2) remembered course pair  3) logo text as read  4) single course name
     const key = r.courses.map(c => c.name).filter(Boolean).join('|');
-    r.club = S.clubMap[key] || r.courses.map(c => S.clubMap[c.name]).find(Boolean) || '';
+    let clubSrc = '';
+    const lg = normLogo(r.logo);
+    if (lg.length >= 3) {
+      let best = 0, bestClub = '';
+      for (const k in S.clubMap) if (k.startsWith('logo:')) { const sm = similarity(lg, k.slice(5)); if (sm > best) { best = sm; bestClub = S.clubMap[k]; } }
+      if (best >= 0.6) { r.club = bestClub; clubSrc = 'memo'; }
+    }
+    if (!r.club && key && S.clubMap[key]) { r.club = S.clubMap[key]; clubSrc = 'memo'; }
+    if (!r.club && r.logo) { r.club = r.logo; clubSrc = 'logo'; }
+    if (!r.club) { r.club = r.courses.map(c => S.clubMap[c.name]).find(Boolean) || ''; if (r.club) clubSrc = 'memo'; }
     let bad = 0;
     card.forEach((cs, ci) => cs.forEach((t, pi) => { if (t != null && sum(r.players[pi].scores[ci]) !== t) bad++; }));
     notes.unshift(bad || warn.length
       ? `인식 결과를 확인해 주세요. 카드 합계와 다른 줄 ${bad}개, 확인 필요한 칸 ${warn.length}개가 표시되어 있습니다.`
       : '✓ 모든 줄의 합계가 스코어카드와 일치합니다. 골프장명·날짜만 확인 후 저장하세요.');
     if (!res.top?.date) notes.push('⚠️ 날짜를 읽지 못해 선택한 날짜로 설정했습니다.');
-    if (!r.club) notes.push('골프장명을 입력하면 다음부터 같은 코스명으로 자동 입력됩니다.');
+    if (clubSrc === 'logo') notes.push(`골프장명은 로고에서 읽은 "${r.logo}"입니다. 원하는 이름(예: 한글)으로 고쳐 저장하면 다음부터 같은 로고는 그 이름으로 입력됩니다.`);
+    if (!r.club) notes.push('골프장명을 입력하면 다음부터 같은 로고·코스명으로 자동 입력됩니다.');
     notes.ok = !bad && !warn.length;
     return { r, warn, notes, card, mode: isRel ? 'rel' : 'abs' };
   }
   return { prepare, recognize, toRound, _dbg: { analyze, cellCanvas, readNum, loadImage, w: () => numW } };
 })();
 
-$('#fileIn').onchange = async e => {
-  const f = e.target.files[0]; if (!f) return;
-  const pg = showProgress('스코어카드 인식');
-  let res;
-  try { res = await OCR.recognize(f, pg.set); }
-  catch (err) {
-    pg.close(); toast(err.message, 4000);
+async function recognizeFile(f, progress) {
+  try {
+    const res = await OCR.recognize(f, progress);
+    const x = OCR.toRound(res, S.selected, S.settings.myName);
+    return { r: x.r, opts: { warn: x.warn, notes: x.notes, card: x.card, mode: x.mode } };
+  } catch (err) {
     const b = blankRound();
-    try { const img = await new Promise((ok, no) => { const i = new Image(); i.onload = () => ok(i); i.onerror = no; i.src = URL.createObjectURL(f); });
+    try {
+      const img = await new Promise((ok, no) => { const i = new Image(); i.onload = () => ok(i); i.onerror = no; i.src = URL.createObjectURL(f); });
       const c = document.createElement('canvas'); const w = Math.min(900, img.naturalWidth); c.width = w; c.height = Math.round(img.naturalHeight * w / img.naturalWidth);
-      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); b.image = c.toDataURL('image/jpeg', 0.72); } catch (_) {}
-    openEditor(b, { notes: ['이미지 인식을 사용할 수 없어 직접 입력 모드로 열었습니다.'] });
-    return;
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); b.image = c.toDataURL('image/jpeg', 0.72);
+    } catch (_) {}
+    return { r: b, opts: { notes: [`⚠️ ${err.message} — 직접 입력해 주세요.`] } };
   }
-  pg.close();
-  const x = OCR.toRound(res, S.selected, S.settings.myName);
-  openEditor(x.r, { warn: x.warn, notes: x.notes, card: x.card, mode: x.mode });
+}
+$('#fileIn').onchange = async e => {
+  const files = [...e.target.files]; if (!files.length) return;
+  const n = files.length; let pg = null, saved = 0;
+  // recognise cards one after another in the background while the user reviews the previous one
+  let chain = Promise.resolve();
+  const jobs = files.map((f, i) => chain = chain.then(() => recognizeFile(f, (m, fr) => pg && pg.set(n > 1 ? `${i + 1}/${n}장 · ${m}` : m, fr))));
+  for (let i = 0; i < n; i++) {
+    let x = await Promise.race([jobs[i], Promise.resolve(null)]); // already recognised?
+    if (!x) { pg = showProgress(n > 1 ? `스코어카드 인식 (${i + 1}/${n})` : '스코어카드 인식'); x = await jobs[i]; pg.close(); pg = null; }
+    const dup = x.r.time && S.rounds.find(o => o.date === x.r.date && o.time === x.r.time);
+    if (dup) { x.opts.notes = x.opts.notes || []; x.opts.notes.unshift(`⚠️ ${x.r.date} ${x.r.time} 기록이 이미 있습니다. 같은 카드라면 ${i + 1 < n ? '건너뛰기' : '취소'}를 누르세요.`); x.opts.notes.ok = false; }
+    const result = await openEditor(x.r, { ...x.opts, tag: n > 1 ? ` (${i + 1}/${n})` : '', remaining: n - i - 1 });
+    if (result === 'saved') saved++;
+  }
+  if (n > 1) toast(`${n}장 중 ${saved}건을 저장했습니다`, 3000);
 };
 
 /* ================= boot ================= */
