@@ -299,6 +299,17 @@ function similarity(a, b) { // 1 - normalized Levenshtein distance
   for (let i = 1; i <= m; i++) { const cur = [i]; for (let j = 1; j <= n; j++) cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1)); prev = cur; }
   return 1 - prev[n] / Math.max(m, n);
 }
+// stored scorecard copy: 600px wide, grayscale, JPEG 0.5 (~60KB) — enough to read the numbers
+function shrinkImage(img) {
+  const w = Math.min(600, img.naturalWidth || img.width), h = Math.round((img.naturalHeight || img.height) * w / (img.naturalWidth || img.width));
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, w, h); x.drawImage(img, 0, 0, w, h);
+  const d = x.getImageData(0, 0, w, h), p = d.data;
+  for (let i = 0; i < p.length; i += 4) { const l = (p[i] * 299 + p[i + 1] * 587 + p[i + 2] * 114) / 1000; p[i] = p[i + 1] = p[i + 2] = l; }
+  x.putImageData(d, 0, 0); return c.toDataURL('image/jpeg', 0.5);
+}
+const dataUrlKB = u => u ? Math.round(u.length * 0.75 / 1024) : 0;
+const loadDataUrl = u => new Promise((ok, no) => { const i = new Image(); i.onload = () => ok(i); i.onerror = no; i.src = u; });
 const normName = s => String(s || '').replace(/[\s*＊·.]/g, '').toLowerCase();
 function toast(msg, ms = 2400) {
   const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg;
@@ -838,6 +849,8 @@ async function saveEditor() {
 
 /* ================= settings ================= */
 async function openSettings() {
+  const withImg = S.rounds.filter(r => r.image), imgKB = sum(withImg.map(r => dataUrlKB(r.image))), big = withImg.filter(r => dataUrlKB(r.image) > 80).length;
+  const incImg = !!S.settings.backupImages;
   let persisted = null;
   try { persisted = navigator.storage && navigator.storage.persisted ? await navigator.storage.persisted() : null; } catch (e) {}
   $('#layer').innerHTML = `<div class="sheet"><div class="sheet-head"><span style="width:50px"></span><h3>설정</h3><button id="stClose">닫기</button></div>
@@ -846,6 +859,9 @@ async function openSettings() {
       <input type="text" id="stName" value="${esc(S.settings.myName)}" placeholder="예: 구자윤"></div></div>
     <div class="box">
       <div class="set-item"><div>백업 내보내기<div class="d">전체 기록 ${S.rounds.length}건을 JSON 파일로 저장</div></div><button class="btn" id="stExp" style="flex:none">내보내기</button></div>
+      <div class="set-item"><div>백업에 이미지 포함<div class="d">${incImg ? `포함 — 백업 파일 약 ${Math.max(1, Math.round(imgKB / 1024))}MB 증가` : '제외 — 스코어 데이터만 저장 (가져올 때 기존 이미지는 유지)'}</div></div>
+        <button class="me-tg ${incImg ? 'on' : ''}" id="stBkImg" style="flex:none">${incImg ? '포함' : '제외'}</button></div>
+      <div class="set-item"><div>스코어카드 이미지<div class="d">${withImg.length}장 · 약 ${imgKB >= 1024 ? (imgKB / 1024).toFixed(1) + 'MB' : imgKB + 'KB'}${big ? ` · 큰 이미지 ${big}장` : ''}</div></div>${big ? '<button class="btn" id="stShrink" style="flex:none">줄이기</button>' : ''}</div>
       <div class="set-item"><div>백업 가져오기<div class="d">JSON 백업 파일에서 복원 (같은 기록은 덮어씀)</div></div><button class="btn" id="stImp" style="flex:none">가져오기</button></div>
       <div class="set-item"><div>오프라인 인식 준비<div class="d">이미지 인식 엔진·한글 데이터를 미리 받아둡니다 (Wi-Fi 권장)</div></div><button class="btn" id="stOcr" style="flex:none">받기</button></div>
       <div class="set-item"><div>저장소 보호<div class="d">${persisted === true ? '영구 저장 허용됨 ✓' : persisted === false ? '브라우저가 공간 부족 시 지울 수 있음 — 홈 화면에 추가해 사용하세요' : '확인 불가'}</div></div>${persisted === false ? '<button class="btn" id="stPersist" style="flex:none">요청</button>' : ''}</div>
@@ -862,6 +878,17 @@ async function openSettings() {
   $('#stClose').onclick = () => { closeLayer(); render(); };
   $('#stName').onchange = e => { S.settings.myName = e.target.value.trim(); DB.set('settings', S.settings); toast('저장했습니다'); };
   $('#stExp').onclick = exportBackup;
+  $('#stBkImg').onclick = () => { S.settings.backupImages = !incImg; DB.set('settings', S.settings); openSettings(); };
+  const sh = $('#stShrink'); if (sh) sh.onclick = async () => {
+    const pg = showProgress('이미지 줄이는 중'); let i = 0, before = imgKB;
+    const targets = withImg.filter(r => dataUrlKB(r.image) > 80);
+    for (const r of targets) {
+      try { r.image = shrinkImage(await loadDataUrl(r.image)); await DB.put(r); } catch (e) {}
+      pg.set(`${++i}/${targets.length}`, i / targets.length);
+    }
+    pg.close(); const after = sum(S.rounds.map(r => dataUrlKB(r.image)));
+    toast(`${targets.length}장 줄였습니다 (${Math.round(before / 1024 * 10) / 10}MB → ${Math.round(after / 1024 * 10) / 10}MB)`, 3500); openSettings();
+  };
   $('#stImp').onclick = () => { $('#importIn').value = ''; $('#importIn').click(); };
   $('#stOcr').onclick = async () => {
     const pg = showProgress('인식 엔진 다운로드 중…');
@@ -877,7 +904,8 @@ async function openSettings() {
 }
 $('#settingsBtn').onclick = openSettings;
 async function exportBackup() {
-  const data = { app: 'golf-score-calendar', version: 1, exportedAt: new Date().toISOString(), settings: S.settings, clubMap: S.clubMap, rounds: S.rounds };
+  const rounds = S.settings.backupImages ? S.rounds : S.rounds.map(r => ({ ...r, image: null }));
+  const data = { app: 'golf-score-calendar', version: 1, exportedAt: new Date().toISOString(), images: !!S.settings.backupImages, settings: S.settings, clubMap: S.clubMap, rounds };
   const name = `golf-scores-${ymd(new Date())}.json`;
   const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
   try {
@@ -893,7 +921,11 @@ $('#importIn').onchange = async e => {
     const d = JSON.parse(await f.text());
     if (!d || !Array.isArray(d.rounds)) throw new Error('백업 파일 형식이 아닙니다');
     let n = 0;
-    for (const r of d.rounds) { if (r && r.id && r.date && Array.isArray(r.players) && Array.isArray(r.courses)) { await DB.put(r); n++; } }
+    for (const r of d.rounds) {
+      if (!(r && r.id && r.date && Array.isArray(r.players) && Array.isArray(r.courses))) continue;
+      if (!r.image) { const old = S.rounds.find(o => o.id === r.id); if (old && old.image) r.image = old.image; } // keep image already on this phone
+      await DB.put(r); n++;
+    }
     if (d.clubMap) { S.clubMap = Object.assign({}, d.clubMap, S.clubMap); await DB.set('clubMap', S.clubMap); }
     if (d.settings && !S.settings.myName && d.settings.myName) { S.settings.myName = d.settings.myName; await DB.set('settings', S.settings); }
     S.rounds = await DB.all(); toast(`${n}건을 가져왔습니다`); openSettings();
@@ -957,11 +989,6 @@ const OCR = (() => {
       img.onload = () => res(img); img.onerror = () => rej(new Error('이미지를 열 수 없습니다'));
       img.src = url;
     });
-  }
-  function thumb(img) {
-    const w = Math.min(900, img.naturalWidth), h = Math.round(img.naturalHeight * w / img.naturalWidth);
-    const c = document.createElement('canvas'); c.width = w; c.height = h;
-    c.getContext('2d').drawImage(img, 0, 0, w, h); return c.toDataURL('image/jpeg', 0.72);
   }
   const median = a => { if (!a.length) return 0; const s = a.slice().sort((x, y) => x - y); return s[s.length >> 1]; };
 
@@ -1264,7 +1291,7 @@ const OCR = (() => {
   async function recognize(file, progress) {
     progress('이미지 분석 중…', 0.02);
     const img = await loadImage(file);
-    const image = thumb(img);
+    const image = shrinkImage(img);
     let A;
     try { A = analyze(img); } catch (e) { return { image, error: e.message }; }
     progress('인식 엔진 준비 중… (첫 사용 시 다운로드)', 0.05);
@@ -1378,8 +1405,7 @@ async function recognizeFile(f, progress) {
     const b = blankRound();
     try {
       const img = await new Promise((ok, no) => { const i = new Image(); i.onload = () => ok(i); i.onerror = no; i.src = URL.createObjectURL(f); });
-      const c = document.createElement('canvas'); const w = Math.min(900, img.naturalWidth); c.width = w; c.height = Math.round(img.naturalHeight * w / img.naturalWidth);
-      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); b.image = c.toDataURL('image/jpeg', 0.72);
+      b.image = shrinkImage(img);
     } catch (_) {}
     return { r: b, opts: { notes: [`⚠️ ${err.message} — 직접 입력해 주세요.`] } };
   }
