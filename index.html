@@ -409,21 +409,22 @@ function renderMonth() {
     <div class="stat"><b>${full.length ? Math.min(...full) : '-'}</b><span>베스트</span></div></div>`;
   $('#main').innerHTML = h;
 }
+// day-view scorecard in the card's own style: holes as +/- vs par (0 = par), totals as strokes
 function scoreTable(r) {
-  const mi = meIdx(r);
+  const mi = meIdx(r), nc = r.courses.length;
   return r.courses.map((c, ci) => {
-    const n = c.par.length;
+    const n = c.par.length, last = nc > 1 && ci === nc - 1;
     let t = `<div class="sc-wrap"><table class="sc"><thead><tr><th>${esc(c.name || `코스${ci + 1}`)}</th>`;
     for (let h = 0; h < n; h++) t += `<th>${h + 1}</th>`;
-    t += `<th>합</th></tr></thead><tbody><tr class="par"><td class="nm">PAR</td>${c.par.map(p => `<td>${p ?? ''}</td>`).join('')}<td>${sum(c.par)}</td></tr>`;
+    t += `<th${last ? ' colspan="2"' : ''}>TOTAL</th></tr></thead><tbody><tr class="par"><td class="nm">PAR</td>${c.par.map(p => `<td>${p ?? ''}</td>`).join('')}<td>${sum(c.par)}</td>${last ? `<td>${parTotal(r)}</td>` : ''}</tr>`;
     r.players.forEach((p, pi) => {
       const sc = p.scores[ci] || [];
       t += `<tr class="${pi === mi ? 'me' : ''}"><td class="nm">${esc(p.name || '-')}</td>`;
       for (let h = 0; h < n; h++) {
-        const v = sc[h];
-        t += `<td>${v == null ? '' : `<span class="s ${diffClass(v - c.par[h])}">${v}</span>`}</td>`;
+        const v = sc[h], d = v == null || c.par[h] == null ? null : v - c.par[h];
+        t += `<td>${d == null ? '' : `<span class="s ${diffClass(d)}">${d}</span>`}</td>`;
       }
-      t += `<td class="tot">${sum(sc) || ''}</td></tr>`;
+      t += `<td class="tot">${sum(sc) || ''}</td>${last ? `<td class="tot">${playerTotal(r, pi) || ''}</td>` : ''}</tr>`;
     });
     return t + '</tbody></table></div>';
   }).join('');
@@ -702,7 +703,7 @@ function blankRound() {
 let ED = null; // { r, mode, card, warn:Set }
 function openEditor(r, extra = {}) {
   return new Promise(done => {
-    ED = { r, mode: extra.mode || 'abs', card: extra.card || null, warn: new Set(extra.warn || []), notes: extra.notes || [], done };
+    ED = { r, mode: extra.mode || S.settings.inputMode || 'rel', card: extra.card || null, warn: new Set(extra.warn || []), notes: extra.notes || [], done };
     const queued = extra.remaining > 0;
     $('#layer').innerHTML = `<div class="sheet" id="ed">
       <div class="sheet-head"><button id="edCancel">${queued ? '건너뛰기' : '취소'}</button><h3>${r.id ? '라운드 편집' : '새 라운드'}${extra.tag || ''}</h3><button id="edSave">저장</button></div>
@@ -738,7 +739,7 @@ function renderEditor() {
   $('#fMemo').oninput = e => r.memo = e.target.value;
   $('#addPl').onclick = () => { r.players.push({ name: '', me: false, scores: r.courses.map(c => Array(c.par.length).fill(null)) }); renderPlayers(); renderCourses(); };
   $('#addCrs').onclick = () => { r.courses.push({ name: '', par: [4, 4, 3, 4, 5, 4, 3, 4, 5] }); r.players.forEach(p => p.scores.push(Array(9).fill(null))); renderCourses(); };
-  $('#modeSeg').onclick = e => { const m = e.target.dataset.m; if (!m) return; ED.mode = m; renderCourses(); };
+  $('#modeSeg').onclick = e => { const m = e.target.dataset.m; if (!m) return; ED.mode = m; S.settings.inputMode = m; DB.set('settings', S.settings).catch(() => {}); renderCourses(); };
   renderPlayers(); renderCourses();
 }
 function renderPlayers() {
