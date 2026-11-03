@@ -1,0 +1,1031 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1f6f4a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="골프달력">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" href="icons/icon-192.png">
+<title>골프 스코어 달력</title>
+<style>
+:root{
+  --bg:#f3f5f2; --card:#ffffff; --text:#18211d; --muted:#6b756f; --line:#e1e6e2;
+  --accent:#1f6f4a; --accent-soft:#e3f1e8; --accent-text:#ffffff;
+  --blue:#2d63a3; --par-row:#eef3fa;
+  --eg-bg:#f5d77a; --eg-fg:#5a4300;
+  --bd-bg:#fbd9d9; --bd-fg:#b42323;
+  --bg-bg:#e3ecf8; --bg-fg:#2b4f86;
+  --db-bg:#c9d9f1; --db-fg:#1d3e72;
+  --tp-bg:#9fb8e3; --tp-fg:#0f2a57;
+  --warn:#d9480f; --warn-soft:#fff1e6; --ok:#2b8a3e;
+  --sun:#d64545; --sat:#2d63a3;
+  --shadow:0 1px 3px rgba(0,0,0,.08),0 4px 14px rgba(0,0,0,.05);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#101412; --card:#1a201d; --text:#e7ece9; --muted:#97a19b; --line:#2b3430;
+    --accent:#3fa874; --accent-soft:#1d3327; --accent-text:#08140e;
+    --blue:#5b8fd1; --par-row:#1c2633;
+    --eg-bg:#6b5310; --eg-fg:#ffe7a1;
+    --bd-bg:#5a2222; --bd-fg:#ffb3b3;
+    --bg-bg:#1f2f47; --bg-fg:#b8cff2;
+    --db-bg:#2a3f63; --db-fg:#d3e2fa;
+    --tp-bg:#3a5687; --tp-fg:#eef4ff;
+    --warn:#ff8a4c; --warn-soft:#3a2416; --ok:#69db7c;
+    --sun:#ff8080; --sat:#7fb0ef;
+    --shadow:none;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#101412; --card:#1a201d; --text:#e7ece9; --muted:#97a19b; --line:#2b3430;
+  --accent:#3fa874; --accent-soft:#1d3327; --accent-text:#08140e;
+  --blue:#5b8fd1; --par-row:#1c2633;
+  --eg-bg:#6b5310; --eg-fg:#ffe7a1; --bd-bg:#5a2222; --bd-fg:#ffb3b3;
+  --bg-bg:#1f2f47; --bg-fg:#b8cff2; --db-bg:#2a3f63; --db-fg:#d3e2fa;
+  --tp-bg:#3a5687; --tp-fg:#eef4ff; --warn:#ff8a4c; --warn-soft:#3a2416; --ok:#69db7c;
+  --sun:#ff8080; --sat:#7fb0ef; --shadow:none;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR","Malgun Gothic",sans-serif;font-size:15px;line-height:1.4;min-height:100vh;
+  padding-bottom:calc(90px + env(safe-area-inset-bottom))}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;padding:0}
+input,select,textarea{font:inherit;font-size:16px;color:var(--text);background:var(--card);border:1px solid var(--line);border-radius:8px;padding:8px 10px;width:100%}
+input:focus,textarea:focus,select:focus{outline:2px solid var(--accent);outline-offset:-1px}
+.hidden{display:none!important}
+
+/* top bar */
+.top{position:sticky;top:0;z-index:20;background:var(--bg);padding:calc(8px + env(safe-area-inset-top)) 16px 8px;border-bottom:1px solid var(--line)}
+.top-row{display:flex;align-items:center;gap:8px}
+.top h1{font-size:19px;margin:0;flex:1;font-weight:700;letter-spacing:-.3px;text-align:center}
+.icon-btn{width:38px;height:38px;border-radius:10px;display:grid;place-items:center;font-size:20px}
+.icon-btn:active{background:var(--line)}
+.seg{display:flex;background:var(--line);border-radius:10px;padding:3px;margin-top:8px}
+.seg button{flex:1;padding:6px 0;border-radius:8px;font-size:14px;color:var(--muted);font-weight:600}
+.seg button.on{background:var(--card);color:var(--text);box-shadow:var(--shadow)}
+.sub-row{display:flex;justify-content:space-between;align-items:center;margin-top:6px;font-size:13px;color:var(--muted)}
+.pill{border:1px solid var(--line);border-radius:999px;padding:3px 10px;font-size:13px;color:var(--text);background:var(--card)}
+
+main{padding:12px 16px}
+
+/* month */
+.wk{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-bottom:4px}
+.wk div{text-align:center;font-size:12px;color:var(--muted);font-weight:600}
+.wk div:first-child{color:var(--sun)} .wk div:last-child{color:var(--sat)}
+.grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px}
+.cell{background:var(--card);border-radius:8px;min-height:86px;padding:3px 2px 4px;display:flex;flex-direction:column;align-items:center;gap:1px;overflow:hidden;text-align:center;border:1px solid transparent}
+.cell.out{opacity:.35}
+.cell.today{border-color:var(--accent)}
+.cell.sel{background:var(--accent-soft)}
+.cell .dn{font-size:12px;font-weight:600;align-self:flex-start;padding-left:3px}
+.cell.sun .dn{color:var(--sun)} .cell.sat .dn{color:var(--sat)}
+.cell .club{font-size:9.5px;width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600}
+.cell .tm{font-size:9px;color:var(--muted)}
+.cell .me{font-size:17px;font-weight:800;color:var(--accent);line-height:1.1}
+.cell .co{font-size:8.5px;color:var(--muted);line-height:1.15;word-break:break-all}
+.cell .more{font-size:9px;color:var(--accent);font-weight:700}
+.summary{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}
+.stat{background:var(--card);border-radius:12px;padding:10px;text-align:center;box-shadow:var(--shadow)}
+.stat b{display:block;font-size:20px}
+.stat span{font-size:12px;color:var(--muted)}
+
+/* day */
+.empty{text-align:center;color:var(--muted);padding:40px 0}
+.round{background:var(--card);border-radius:14px;padding:14px;margin-bottom:14px;box-shadow:var(--shadow)}
+.round-head{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}
+.round-head h2{margin:0;font-size:18px}
+.round-head .meta{color:var(--muted);font-size:13px}
+.big-score{font-size:34px;font-weight:800;color:var(--accent);line-height:1}
+.big-score small{font-size:13px;color:var(--muted);font-weight:600;display:block;text-align:right}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 4px}
+.chip{background:var(--bg);border-radius:999px;padding:3px 10px;font-size:13px}
+.chip.me{background:var(--accent-soft);font-weight:700}
+.sc-wrap{overflow-x:auto;margin-top:10px;-webkit-overflow-scrolling:touch}
+table.sc{border-collapse:collapse;width:100%;font-size:13px;min-width:330px}
+table.sc th,table.sc td{padding:5px 1px;text-align:center;border-bottom:1px solid var(--line)}
+table.sc thead th{background:var(--blue);color:#fff;font-weight:600}
+table.sc thead th:first-child{border-top-left-radius:6px} table.sc thead th:last-child{border-top-right-radius:6px}
+table.sc tr.par td{background:var(--par-row);color:var(--muted);font-weight:600}
+table.sc td.nm{text-align:left;padding-left:4px;white-space:nowrap;max-width:64px;overflow:hidden;text-overflow:ellipsis;font-weight:600}
+table.sc tr.me td.nm{color:var(--accent)}
+table.sc td.tot{font-weight:800}
+.s{display:inline-block;min-width:22px;padding:1px 2px;border-radius:5px}
+.eg{background:var(--eg-bg);color:var(--eg-fg);font-weight:700}
+.bd{background:var(--bd-bg);color:var(--bd-fg);font-weight:700}
+.bg{background:var(--bg-bg);color:var(--bg-fg)}
+.db{background:var(--db-bg);color:var(--db-fg)}
+.tp{background:var(--tp-bg);color:var(--tp-fg)}
+.round-actions{display:flex;gap:8px;margin-top:12px}
+.btn{flex:1;padding:10px;border-radius:10px;background:var(--bg);font-weight:600;text-align:center}
+.btn.primary{background:var(--accent);color:var(--accent-text)}
+.btn.danger{color:var(--warn)}
+.memo{margin-top:8px;font-size:13px;color:var(--muted);white-space:pre-wrap}
+details.img summary{font-size:13px;color:var(--muted);margin-top:10px;cursor:pointer}
+details.img img{width:100%;border-radius:8px;margin-top:6px}
+
+/* fab */
+.fab{position:fixed;right:18px;bottom:calc(20px + env(safe-area-inset-bottom));width:58px;height:58px;border-radius:50%;background:var(--accent);color:var(--accent-text);font-size:30px;box-shadow:0 4px 14px rgba(0,0,0,.25);z-index:30;display:grid;place-items:center}
+
+/* sheets */
+.backdrop{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:40}
+.menu{position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom));z-index:41;display:flex;flex-direction:column;gap:8px}
+.menu button{background:var(--card);padding:16px;border-radius:14px;font-size:16px;font-weight:600;text-align:left}
+.menu button small{display:block;font-weight:400;color:var(--muted);font-size:12px}
+.sheet{position:fixed;inset:0;z-index:50;background:var(--bg);display:flex;flex-direction:column}
+.sheet-head{display:flex;align-items:center;justify-content:space-between;padding:calc(10px + env(safe-area-inset-top)) 12px 10px;border-bottom:1px solid var(--line);background:var(--bg)}
+.sheet-head h3{margin:0;font-size:17px}
+.sheet-head button{padding:6px 10px;font-size:16px;color:var(--accent);font-weight:600}
+.sheet-body{flex:1;overflow-y:auto;padding:14px 16px calc(30px + env(safe-area-inset-bottom));-webkit-overflow-scrolling:touch}
+.fld{margin-bottom:12px}
+.fld label{display:block;font-size:12px;color:var(--muted);margin-bottom:4px;font-weight:600}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.box{background:var(--card);border-radius:12px;padding:12px;margin-bottom:14px}
+.box h4{margin:0 0 8px;font-size:14px;display:flex;justify-content:space-between;align-items:center}
+.notice{background:var(--warn-soft);color:var(--text);border-radius:10px;padding:10px 12px;font-size:13px;margin-bottom:12px}
+.notice.ok{background:var(--accent-soft)}
+.pl{display:flex;gap:6px;align-items:center;margin-bottom:6px}
+.pl input[type=text]{flex:1}
+.pl .me-tg{white-space:nowrap;font-size:13px;padding:8px 10px;border-radius:8px;border:1px solid var(--line);color:var(--muted)}
+.pl .me-tg.on{background:var(--accent);color:var(--accent-text);border-color:var(--accent);font-weight:700}
+.pl .x{width:34px;height:38px;color:var(--muted);font-size:18px}
+.link{color:var(--accent);font-weight:600;font-size:14px}
+.ed-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -4px}
+table.ed{border-collapse:separate;border-spacing:2px;font-size:12px}
+table.ed th{color:var(--muted);font-weight:600;padding:2px 0}
+table.ed td.nm{position:sticky;left:0;background:var(--card);font-weight:600;font-size:12px;max-width:58px;min-width:52px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding-right:4px;z-index:1}
+table.ed input{width:34px;height:36px;padding:0;text-align:center;font-size:16px;border-radius:6px}
+table.ed tr.par input{background:var(--par-row)}
+table.ed input.warn{border-color:var(--warn);background:var(--warn-soft)}
+table.ed td.t{min-width:40px;text-align:center;font-weight:800;font-size:14px}
+.chk{font-size:11px;display:block;font-weight:600}
+.chk.good{color:var(--ok)} .chk.bad{color:var(--warn)}
+.mode{display:flex;gap:6px;align-items:center;font-size:13px;color:var(--muted);margin-bottom:10px}
+.mode .seg{margin:0;flex:1}
+.progress{position:fixed;inset:0;z-index:60;background:rgba(0,0,0,.55);display:grid;place-items:center;padding:24px}
+.progress .pbox{background:var(--card);border-radius:16px;padding:20px;width:100%;max-width:340px;text-align:center}
+.bar{height:8px;background:var(--line);border-radius:4px;overflow:hidden;margin-top:12px}
+.bar i{display:block;height:100%;background:var(--accent);width:0;transition:width .2s}
+.toast{position:fixed;left:50%;bottom:calc(96px + env(safe-area-inset-bottom));transform:translateX(-50%);background:#222;color:#fff;padding:10px 16px;border-radius:10px;font-size:14px;z-index:80;max-width:90vw;text-align:center}
+.set-item{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--line);gap:10px}
+.set-item:last-child{border-bottom:0}
+.set-item .d{font-size:12px;color:var(--muted)}
+.set-item button{white-space:nowrap}
+.help{font-size:13px;color:var(--muted);line-height:1.6}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="top-row">
+    <button class="icon-btn" id="prev" aria-label="이전">‹</button>
+    <h1 id="title"></h1>
+    <button class="icon-btn" id="next" aria-label="다음">›</button>
+  </div>
+  <div class="sub-row">
+    <button class="pill" id="todayBtn">오늘</button>
+    <div class="seg" style="margin:0;width:150px" id="viewSeg">
+      <button data-v="month">월간</button><button data-v="day">일간</button>
+    </div>
+    <button class="icon-btn" id="settingsBtn" aria-label="설정"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
+  </div>
+</header>
+<main id="main"></main>
+<button class="fab" id="fab" aria-label="기록 추가">＋</button>
+<input type="file" id="fileIn" accept="image/*" class="hidden">
+<input type="file" id="importIn" accept="application/json,.json" class="hidden">
+<div id="layer"></div>
+
+<script>
+'use strict';
+/* ================= utils ================= */
+const $ = (s, el = document) => el.querySelector(s);
+const pad = n => String(n).padStart(2, '0');
+const ymd = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const parseYmd = s => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); };
+const DOW = ['일', '월', '화', '수', '목', '금', '토'];
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+const sum = a => a.reduce((s, v) => s + (v == null || isNaN(v) ? 0 : +v), 0);
+const clone = o => JSON.parse(JSON.stringify(o));
+const normName = s => String(s || '').replace(/[\s*＊·.]/g, '').toLowerCase();
+function toast(msg, ms = 2400) {
+  const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg;
+  document.body.appendChild(t); setTimeout(() => t.remove(), ms);
+}
+function diffClass(d) {
+  if (d == null || isNaN(d)) return '';
+  if (d <= -2) return 'eg'; if (d === -1) return 'bd'; if (d === 0) return '';
+  if (d === 1) return 'bg'; if (d === 2) return 'db'; return 'tp';
+}
+const fmtDiff = d => d > 0 ? `+${d}` : d === 0 ? 'E' : String(d);
+
+/* ================= storage (IndexedDB) ================= */
+const DB = (() => {
+  let dbp;
+  const open = () => dbp || (dbp = new Promise((res, rej) => {
+    const r = indexedDB.open('golf-score-calendar', 1);
+    r.onupgradeneeded = () => { const d = r.result; d.createObjectStore('rounds', { keyPath: 'id' }); d.createObjectStore('kv'); };
+    r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+  }));
+  const tx = async (store, mode, fn) => {
+    const d = await open();
+    return new Promise((res, rej) => {
+      const t = d.transaction(store, mode); const req = fn(t.objectStore(store));
+      t.oncomplete = () => res(req ? req.result : undefined); t.onerror = () => rej(t.error); t.onabort = () => rej(t.error);
+    });
+  };
+  return {
+    all: () => tx('rounds', 'readonly', s => s.getAll()),
+    put: r => tx('rounds', 'readwrite', s => s.put(r)),
+    del: id => tx('rounds', 'readwrite', s => s.delete(id)),
+    clear: () => tx('rounds', 'readwrite', s => s.clear()),
+    get: k => tx('kv', 'readonly', s => s.get(k)),
+    set: (k, v) => tx('kv', 'readwrite', s => s.put(v, k)),
+  };
+})();
+
+/* ================= state & model ================= */
+const S = {
+  view: 'month', cursor: new Date(), selected: ymd(new Date()),
+  rounds: [], settings: { myName: '' }, clubMap: {},
+};
+const meIdx = r => { const i = r.players.findIndex(p => p.me); return i < 0 ? 0 : i; };
+const parTotal = r => sum(r.courses.flatMap(c => c.par));
+function playerTotal(r, pi) { return sum(r.players[pi].scores.flat()); }
+function playedPar(r, pi) { // par of holes actually filled in
+  let t = 0; r.courses.forEach((c, ci) => c.par.forEach((p, h) => { if (r.players[pi].scores[ci]?.[h] != null) t += +p || 0; })); return t;
+}
+const roundsOn = date => S.rounds.filter(r => r.date === date).sort((a, b) => (a.time || '').localeCompare(b.time || ''));
+async function loadAll() {
+  try { S.rounds = await DB.all(); } catch (e) { S.rounds = []; toast('저장소를 열 수 없습니다: ' + e.message, 4000); }
+  try { Object.assign(S.settings, (await DB.get('settings')) || {}); } catch (e) {}
+  try { S.clubMap = (await DB.get('clubMap')) || {}; } catch (e) {}
+  try { const v = await DB.get('ui'); if (v && v.view) S.view = v.view; } catch (e) {}
+}
+const saveUi = () => DB.set('ui', { view: S.view }).catch(() => {});
+
+/* ================= rendering ================= */
+function render() {
+  document.querySelectorAll('#viewSeg button').forEach(b => b.classList.toggle('on', b.dataset.v === S.view));
+  if (S.view === 'month') renderMonth(); else renderDay();
+}
+function renderMonth() {
+  const y = S.cursor.getFullYear(), m = S.cursor.getMonth();
+  $('#title').textContent = `${y}년 ${m + 1}월`;
+  const first = new Date(y, m, 1), start = new Date(y, m, 1 - first.getDay());
+  const last = new Date(y, m + 1, 0);
+  const weeks = Math.ceil((first.getDay() + last.getDate()) / 7);
+  const today = ymd(new Date());
+  let h = '<div class="wk">' + DOW.map(d => `<div>${d}</div>`).join('') + '</div><div class="grid">';
+  for (let i = 0; i < weeks * 7; i++) {
+    const d = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i), ds = ymd(d);
+    const rs = roundsOn(ds);
+    const cls = ['cell', d.getMonth() !== m && 'out', ds === today && 'today', ds === S.selected && 'sel', d.getDay() === 0 && 'sun', d.getDay() === 6 && 'sat'].filter(Boolean).join(' ');
+    let inner = `<span class="dn">${d.getDate()}</span>`;
+    if (rs.length) {
+      const r = rs[0], mi = meIdx(r);
+      const co = r.players.map((p, i) => i === mi ? null : playerTotal(r, i)).filter(v => v);
+      inner += `<span class="club">${esc(r.club || '골프장')}</span>` +
+        (r.time ? `<span class="tm">${esc(r.time)}</span>` : '') +
+        `<span class="me">${playerTotal(r, mi) || '-'}</span>` +
+        (co.length ? `<span class="co">${co.join('·')}</span>` : '') +
+        (rs.length > 1 ? `<span class="more">+${rs.length - 1}</span>` : '');
+    }
+    h += `<button class="${cls}" data-date="${ds}">${inner}</button>`;
+  }
+  h += '</div>';
+  // month summary (my scores)
+  const mk = `${y}-${pad(m + 1)}`;
+  const mine = S.rounds.filter(r => r.date.startsWith(mk)).map(r => playerTotal(r, meIdx(r))).filter(v => v > 0);
+  const full = S.rounds.filter(r => r.date.startsWith(mk) && r.courses.length >= 2).map(r => playerTotal(r, meIdx(r))).filter(v => v > 0);
+  h += `<div class="summary">
+    <div class="stat"><b>${mine.length}</b><span>라운드</span></div>
+    <div class="stat"><b>${full.length ? (sum(full) / full.length).toFixed(1) : '-'}</b><span>평균 타수</span></div>
+    <div class="stat"><b>${full.length ? Math.min(...full) : '-'}</b><span>베스트</span></div></div>`;
+  $('#main').innerHTML = h;
+}
+function scoreTable(r) {
+  const mi = meIdx(r);
+  return r.courses.map((c, ci) => {
+    const n = c.par.length;
+    let t = `<div class="sc-wrap"><table class="sc"><thead><tr><th>${esc(c.name || `코스${ci + 1}`)}</th>`;
+    for (let h = 0; h < n; h++) t += `<th>${h + 1}</th>`;
+    t += `<th>합</th></tr></thead><tbody><tr class="par"><td class="nm">PAR</td>${c.par.map(p => `<td>${p ?? ''}</td>`).join('')}<td>${sum(c.par)}</td></tr>`;
+    r.players.forEach((p, pi) => {
+      const sc = p.scores[ci] || [];
+      t += `<tr class="${pi === mi ? 'me' : ''}"><td class="nm">${esc(p.name || '-')}</td>`;
+      for (let h = 0; h < n; h++) {
+        const v = sc[h];
+        t += `<td>${v == null ? '' : `<span class="s ${diffClass(v - c.par[h])}">${v}</span>`}</td>`;
+      }
+      t += `<td class="tot">${sum(sc) || ''}</td></tr>`;
+    });
+    return t + '</tbody></table></div>';
+  }).join('');
+}
+function renderDay() {
+  const d = parseYmd(S.selected);
+  $('#title').textContent = `${d.getMonth() + 1}월 ${d.getDate()}일 (${DOW[d.getDay()]})`;
+  const rs = roundsOn(S.selected);
+  if (!rs.length) {
+    $('#main').innerHTML = `<div class="empty">이 날의 기록이 없습니다.<br><br><button class="btn primary" style="flex:none;padding:10px 20px" data-act="add">＋ 기록 추가</button></div>`;
+    return;
+  }
+  $('#main').innerHTML = rs.map(r => {
+    const mi = meIdx(r), tot = playerTotal(r, mi), dif = tot - playedPar(r, mi);
+    const chips = r.players.map((p, i) => {
+      const t = playerTotal(r, i); if (!t) return '';
+      return `<span class="chip ${i === mi ? 'me' : ''}">${esc(p.name || '-')} ${t} (${fmtDiff(t - playedPar(r, i))})</span>`;
+    }).join('');
+    return `<article class="round">
+      <div class="round-head">
+        <div><h2>${esc(r.club || '골프장 미입력')}</h2>
+          <div class="meta">${r.time ? '티업 ' + esc(r.time) : '티업 시간 없음'}${r.courses.length ? ' · ' + r.courses.map(c => esc(c.name)).filter(Boolean).join(' / ') : ''}</div></div>
+        <div class="big-score">${tot || '-'}<small>${tot ? fmtDiff(dif) : ''}</small></div>
+      </div>
+      <div class="chips">${chips}</div>
+      ${scoreTable(r)}
+      ${r.memo ? `<div class="memo">${esc(r.memo)}</div>` : ''}
+      ${r.image ? `<details class="img"><summary>스코어카드 이미지 보기</summary><img src="${r.image}" alt="스코어카드"></details>` : ''}
+      <div class="round-actions">
+        <button class="btn primary" data-act="edit" data-id="${r.id}">편집</button>
+        <button class="btn danger" data-act="del" data-id="${r.id}">삭제</button>
+      </div></article>`;
+  }).join('');
+}
+
+/* ================= navigation ================= */
+function move(delta) {
+  if (S.view === 'month') { S.cursor = new Date(S.cursor.getFullYear(), S.cursor.getMonth() + delta, 1); }
+  else { const d = parseYmd(S.selected); d.setDate(d.getDate() + delta); S.selected = ymd(d); S.cursor = new Date(d.getFullYear(), d.getMonth(), 1); }
+  render();
+}
+$('#prev').onclick = () => move(-1);
+$('#next').onclick = () => move(1);
+$('#todayBtn').onclick = () => { const t = new Date(); S.selected = ymd(t); S.cursor = new Date(t.getFullYear(), t.getMonth(), 1); render(); };
+$('#viewSeg').onclick = e => { const v = e.target.dataset.v; if (!v) return; S.view = v; saveUi(); render(); };
+$('#main').addEventListener('click', async e => {
+  const cell = e.target.closest('.cell');
+  if (cell) {
+    const ds = cell.dataset.date;
+    if (S.selected === ds || roundsOn(ds).length) { S.selected = ds; S.view = 'day'; saveUi(); }
+    else S.selected = ds;
+    render(); return;
+  }
+  const b = e.target.closest('[data-act]'); if (!b) return;
+  if (b.dataset.act === 'add') openAddMenu();
+  if (b.dataset.act === 'edit') openEditor(clone(S.rounds.find(r => r.id === b.dataset.id)));
+  if (b.dataset.act === 'del') {
+    if (!confirm('이 라운드 기록을 삭제할까요?')) return;
+    await DB.del(b.dataset.id); S.rounds = S.rounds.filter(r => r.id !== b.dataset.id); render(); toast('삭제했습니다');
+  }
+});
+// swipe left/right
+(() => {
+  let x0 = null, y0 = 0;
+  $('#main').addEventListener('touchstart', e => { x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; }, { passive: true });
+  $('#main').addEventListener('touchend', e => {
+    if (x0 == null) return; const dx = e.changedTouches[0].clientX - x0, dy = e.changedTouches[0].clientY - y0; x0 = null;
+    if (e.target.closest('.sc-wrap')) return;
+    if (Math.abs(dx) > 70 && Math.abs(dy) < 50) move(dx < 0 ? 1 : -1);
+  }, { passive: true });
+})();
+
+/* ================= add menu ================= */
+function closeLayer() { $('#layer').innerHTML = ''; }
+function openAddMenu() {
+  $('#layer').innerHTML = `<div class="backdrop" id="bk"></div><div class="menu">
+    <button id="mImg">📷 스코어카드 이미지로 추가<small>사진/스크린샷에서 날짜·티업·타수를 읽어옵니다</small></button>
+    <button id="mManual">✏️ 직접 입력<small>${S.selected} 날짜로 빈 스코어카드를 엽니다</small></button>
+    <button id="mCancel" style="text-align:center">취소</button></div>`;
+  $('#bk').onclick = $('#mCancel').onclick = closeLayer;
+  $('#mImg').onclick = () => { closeLayer(); $('#fileIn').value = ''; $('#fileIn').click(); };
+  $('#mManual').onclick = () => { closeLayer(); openEditor(blankRound()); };
+}
+$('#fab').onclick = openAddMenu;
+function blankRound() {
+  const me = S.settings.myName || '나';
+  return {
+    id: null, date: S.selected, time: '', club: '', memo: '', image: null,
+    courses: [{ name: '', par: [4, 4, 3, 4, 5, 4, 3, 4, 5] }, { name: '', par: [4, 4, 3, 4, 5, 4, 3, 4, 5] }],
+    players: [me, '', '', ''].map((n, i) => ({ name: n, me: i === 0, scores: [Array(9).fill(null), Array(9).fill(null)] })),
+  };
+}
+
+/* ================= editor ================= */
+let ED = null; // { r, mode, card, warn:Set }
+function openEditor(r, extra = {}) {
+  ED = { r, mode: extra.mode || 'abs', card: extra.card || null, warn: new Set(extra.warn || []), notes: extra.notes || [] };
+  $('#layer').innerHTML = `<div class="sheet" id="ed">
+    <div class="sheet-head"><button id="edCancel">취소</button><h3>${r.id ? '라운드 편집' : '새 라운드'}</h3><button id="edSave">저장</button></div>
+    <div class="sheet-body" id="edBody"></div></div>`;
+  $('#edCancel').onclick = () => { if (confirm('저장하지 않고 닫을까요?')) closeLayer(); };
+  $('#edSave').onclick = saveEditor;
+  renderEditor();
+}
+function renderEditor() {
+  const r = ED.r;
+  const clubs = [...new Set(S.rounds.map(x => x.club).filter(Boolean))];
+  let h = '';
+  if (ED.notes.length) h += `<div class="notice ${ED.notes.ok ? 'ok' : ''}">${ED.notes.map(esc).join('<br>')}</div>`;
+  if (r.image) h += `<details class="img box" style="padding:8px 12px"><summary style="margin:0">스코어카드 이미지 보기</summary><img src="${r.image}" alt=""></details>`;
+  h += `<div class="box">
+    <div class="row2"><div class="fld"><label>날짜</label><input type="date" id="fDate" value="${esc(r.date)}"></div>
+    <div class="fld"><label>티업 시간</label><input type="time" id="fTime" value="${esc(r.time)}"></div></div>
+    <div class="fld" style="margin:0"><label>골프장</label><input type="text" id="fClub" list="clubList" placeholder="예: 벨라스톤 CC" value="${esc(r.club)}">
+    <datalist id="clubList">${clubs.map(c => `<option value="${esc(c)}">`).join('')}</datalist></div></div>`;
+  h += `<div class="box"><h4>플레이어 <button class="link" id="addPl">＋ 추가</button></h4><div id="plList"></div></div>`;
+  h += `<div class="mode">입력 방식<div class="seg" id="modeSeg"><button data-m="abs">타수 (5, 4…)</button><button data-m="rel">파 대비 (+1, 0…)</button></div></div>`;
+  h += `<div id="crsList"></div>`;
+  h += `<div style="display:flex;gap:16px;margin-bottom:14px"><button class="link" id="addCrs">＋ 9홀 코스 추가</button></div>`;
+  h += `<div class="box"><div class="fld" style="margin:0"><label>메모</label><textarea id="fMemo" rows="2">${esc(r.memo)}</textarea></div></div>`;
+  $('#edBody').innerHTML = h;
+  $('#fDate').onchange = e => r.date = e.target.value;
+  $('#fTime').onchange = e => r.time = e.target.value;
+  $('#fClub').oninput = e => r.club = e.target.value;
+  $('#fMemo').oninput = e => r.memo = e.target.value;
+  $('#addPl').onclick = () => { r.players.push({ name: '', me: false, scores: r.courses.map(c => Array(c.par.length).fill(null)) }); renderPlayers(); renderCourses(); };
+  $('#addCrs').onclick = () => { r.courses.push({ name: '', par: [4, 4, 3, 4, 5, 4, 3, 4, 5] }); r.players.forEach(p => p.scores.push(Array(9).fill(null))); renderCourses(); };
+  $('#modeSeg').onclick = e => { const m = e.target.dataset.m; if (!m) return; ED.mode = m; renderCourses(); };
+  renderPlayers(); renderCourses();
+}
+function renderPlayers() {
+  const r = ED.r;
+  $('#plList').innerHTML = r.players.map((p, i) => `<div class="pl">
+    <input type="text" data-pi="${i}" value="${esc(p.name)}" placeholder="${i ? '동반자' : '이름'}">
+    <button class="me-tg ${p.me ? 'on' : ''}" data-me="${i}">나</button>
+    <button class="x" data-rm="${i}" aria-label="삭제">✕</button></div>`).join('');
+  $('#plList').oninput = e => { const i = e.target.dataset.pi; if (i == null) return; r.players[i].name = e.target.value; renderCourses(true); };
+  $('#plList').onclick = e => {
+    const me = e.target.dataset.me, rm = e.target.dataset.rm;
+    if (me != null) { r.players.forEach((p, i) => p.me = i == me); renderPlayers(); renderCourses(true); }
+    if (rm != null) {
+      if (r.players.length <= 1) return toast('플레이어는 최소 1명 필요합니다');
+      const wasMe = r.players[rm].me; r.players.splice(rm, 1); if (ED.card) ED.card.forEach(c => c.splice(rm, 1));
+      if (wasMe) r.players[0].me = true; renderPlayers(); renderCourses();
+    }
+  };
+}
+function cellVal(v, par) { if (v == null) return ''; return ED.mode === 'rel' ? (par == null ? '' : String(v - par)) : String(v); }
+function renderCourses(keepFocus) {
+  const r = ED.r;
+  if (keepFocus) { // only refresh name labels
+    r.courses.forEach((c, ci) => r.players.forEach((p, pi) => { const el = document.getElementById(`nm-${ci}-${pi}`); if (el) { el.textContent = (p.me ? '★' : '') + (p.name || `P${pi + 1}`); } }));
+    return;
+  }
+  document.querySelectorAll('#modeSeg button').forEach(b => b.classList.toggle('on', b.dataset.m === ED.mode));
+  $('#crsList').innerHTML = r.courses.map((c, ci) => {
+    const n = c.par.length;
+    let t = `<div class="box"><h4><input type="text" data-cname="${ci}" value="${esc(c.name)}" placeholder="코스명 (예: 스톤 / OUT)" style="width:auto;flex:1;margin-right:8px;font-weight:600">
+      ${r.courses.length > 1 ? `<button class="link" style="color:var(--warn);white-space:nowrap" data-rmc="${ci}">코스 삭제</button>` : ''}</h4>
+      <div class="ed-wrap"><table class="ed"><thead><tr><th></th>${c.par.map((_, h) => `<th>${h + 1}</th>`).join('')}<th>합</th></tr></thead><tbody>
+      <tr class="par"><td class="nm">PAR</td>${c.par.map((p, h) => `<td><input inputmode="numeric" data-k="par" data-c="${ci}" data-h="${h}" value="${p ?? ''}" class="${ED.warn.has(`${ci}-par-${h}`) ? 'warn' : ''}"></td>`).join('')}<td class="t" id="pt-${ci}">${sum(c.par)}</td></tr>`;
+    r.players.forEach((p, pi) => {
+      t += `<tr><td class="nm" id="nm-${ci}-${pi}">${p.me ? '★' : ''}${esc(p.name || `P${pi + 1}`)}</td>`;
+      for (let h = 0; h < n; h++) t += `<td><input inputmode="${ED.mode === 'rel' ? 'text' : 'numeric'}" data-k="s" data-c="${ci}" data-p="${pi}" data-h="${h}" value="${cellVal(p.scores[ci][h], c.par[h])}" class="${ED.warn.has(`${ci}-${pi}-${h}`) ? 'warn' : ''}"></td>`;
+      t += `<td class="t" id="tt-${ci}-${pi}"></td></tr>`;
+    });
+    return t + `</tbody></table></div></div>`;
+  }).join('') + `<div class="box" id="grand"></div>`;
+  const box = $('#crsList');
+  box.oninput = e => {
+    const el = e.target, ci = +el.dataset.c, h = +el.dataset.h;
+    if (el.dataset.cname != null) { r.courses[el.dataset.cname].name = el.value; return; }
+    const raw = el.value.trim().replace(/[^\d+\-]/g, ''); el.classList.remove('warn');
+    ED.warn.delete(el.dataset.k === 'par' ? `${ci}-par-${h}` : `${ci}-${el.dataset.p}-${h}`);
+    if (el.dataset.k === 'par') { r.courses[ci].par[h] = raw === '' ? null : parseInt(raw, 10) || null; }
+    else {
+      const p = r.players[+el.dataset.p]; let v = raw === '' || raw === '-' || raw === '+' ? null : parseInt(raw, 10);
+      if (v != null && isNaN(v)) v = null;
+      if (v != null && ED.mode === 'rel') v = (r.courses[ci].par[h] ?? 4) + v;
+      p.scores[ci][h] = v;
+    }
+    updateTotals();
+  };
+  box.onclick = e => {
+    const rmc = e.target.dataset.rmc; if (rmc == null) return;
+    if (!confirm('이 코스(9홀)를 삭제할까요?')) return;
+    r.courses.splice(rmc, 1); r.players.forEach(p => p.scores.splice(rmc, 1)); if (ED.card) ED.card.splice(rmc, 1); renderCourses();
+  };
+  box.onfocusin = e => { if (e.target.tagName === 'INPUT' && e.target.dataset.k) e.target.select(); };
+  updateTotals();
+}
+function updateTotals() {
+  const r = ED.r;
+  r.courses.forEach((c, ci) => {
+    const pt = document.getElementById(`pt-${ci}`); if (pt) pt.textContent = sum(c.par);
+    r.players.forEach((p, pi) => {
+      const el = document.getElementById(`tt-${ci}-${pi}`); if (!el) return;
+      const t = sum(p.scores[ci]); const card = ED.card?.[ci]?.[pi];
+      let chk = '';
+      if (card != null) chk = t === card ? `<span class="chk good">카드 ✓</span>` : `<span class="chk bad">카드 ${card}</span>`;
+      el.innerHTML = (t || '') + chk;
+    });
+  });
+  const g = $('#grand');
+  if (g) g.innerHTML = `<h4>합계</h4>` + r.players.map((p, i) => {
+    const t = playerTotal(r, i); return `<div class="set-item" style="padding:6px 0"><span>${p.me ? '★ ' : ''}${esc(p.name || `P${i + 1}`)}</span><b>${t || '-'}${t ? ` <small style="color:var(--muted);font-weight:500">(${fmtDiff(t - playedPar(r, i))})</small>` : ''}</b></div>`;
+  }).join('');
+}
+async function saveEditor() {
+  const r = ED.r;
+  if (!r.date) return toast('날짜를 입력하세요');
+  r.players = r.players.filter(p => p.name.trim() || p.scores.flat().some(v => v != null));
+  if (!r.players.length) return toast('플레이어 스코어를 입력하세요');
+  if (!r.players.some(p => p.me)) r.players[0].me = true;
+  r.players.forEach(p => p.name = p.name.trim());
+  r.club = (r.club || '').trim();
+  const now = Date.now();
+  if (!r.id) { r.id = uid(); r.createdAt = now; }
+  r.updatedAt = now;
+  try { await DB.put(r); } catch (e) { return toast('저장 실패: ' + e.message, 4000); }
+  const i = S.rounds.findIndex(x => x.id === r.id); if (i >= 0) S.rounds[i] = r; else S.rounds.push(r);
+  // remember course → club mapping, and my name
+  const key = r.courses.map(c => c.name).filter(Boolean).join('|');
+  if (key && r.club) { S.clubMap[key] = r.club; r.courses.forEach(c => { if (c.name) S.clubMap[c.name] = r.club; }); DB.set('clubMap', S.clubMap).catch(() => {}); }
+  const me = r.players.find(p => p.me);
+  if (me && me.name && !S.settings.myName) { S.settings.myName = me.name; DB.set('settings', S.settings).catch(() => {}); }
+  closeLayer();
+  S.selected = r.date; S.view = 'day'; saveUi(); const d = parseYmd(r.date); S.cursor = new Date(d.getFullYear(), d.getMonth(), 1);
+  render(); toast('저장했습니다');
+}
+
+/* ================= settings ================= */
+async function openSettings() {
+  let persisted = null;
+  try { persisted = navigator.storage && navigator.storage.persisted ? await navigator.storage.persisted() : null; } catch (e) {}
+  $('#layer').innerHTML = `<div class="sheet"><div class="sheet-head"><span style="width:50px"></span><h3>설정</h3><button id="stClose">닫기</button></div>
+  <div class="sheet-body">
+    <div class="box"><div class="fld" style="margin:0"><label>내 이름 (스코어카드에서 내 줄을 찾을 때 사용)</label>
+      <input type="text" id="stName" value="${esc(S.settings.myName)}" placeholder="예: 구자윤"></div></div>
+    <div class="box">
+      <div class="set-item"><div>백업 내보내기<div class="d">전체 기록 ${S.rounds.length}건을 JSON 파일로 저장</div></div><button class="btn" id="stExp" style="flex:none">내보내기</button></div>
+      <div class="set-item"><div>백업 가져오기<div class="d">JSON 백업 파일에서 복원 (같은 기록은 덮어씀)</div></div><button class="btn" id="stImp" style="flex:none">가져오기</button></div>
+      <div class="set-item"><div>오프라인 인식 준비<div class="d">이미지 인식 엔진·한글 데이터를 미리 받아둡니다 (Wi-Fi 권장)</div></div><button class="btn" id="stOcr" style="flex:none">받기</button></div>
+      <div class="set-item"><div>저장소 보호<div class="d">${persisted === true ? '영구 저장 허용됨 ✓' : persisted === false ? '브라우저가 공간 부족 시 지울 수 있음 — 홈 화면에 추가해 사용하세요' : '확인 불가'}</div></div>${persisted === false ? '<button class="btn" id="stPersist" style="flex:none">요청</button>' : ''}</div>
+    </div>
+    <div class="box help">
+      <b>사용 팁</b><br>
+      • 데이터는 이 기기의 브라우저 저장소에만 저장되며 외부로 전송되지 않습니다.<br>
+      • 아이폰: 사파리 공유 버튼 → <b>홈 화면에 추가</b> 후 아이콘으로 실행하세요. (사파리 탭에서만 쓰면 오래 미사용 시 데이터가 지워질 수 있습니다)<br>
+      • 기기 변경·초기화에 대비해 가끔 <b>백업 내보내기</b>를 해두세요.<br>
+      • 이미지 인식은 첫 사용 시 인터넷이 필요합니다(엔진 약 수 MB). 인식 결과는 저장 전에 꼭 확인하세요. 카드 합계와 다르면 빨간색으로 표시됩니다.
+    </div>
+    <div class="box"><div class="set-item"><div style="color:var(--warn)">모든 기록 삭제</div><button class="btn danger" id="stWipe" style="flex:none">삭제</button></div></div>
+  </div></div>`;
+  $('#stClose').onclick = () => { closeLayer(); render(); };
+  $('#stName').onchange = e => { S.settings.myName = e.target.value.trim(); DB.set('settings', S.settings); toast('저장했습니다'); };
+  $('#stExp').onclick = exportBackup;
+  $('#stImp').onclick = () => { $('#importIn').value = ''; $('#importIn').click(); };
+  $('#stOcr').onclick = async () => {
+    const pg = showProgress('인식 엔진 다운로드 중…');
+    try { await OCR.prepare(pg.set); pg.close(); toast('준비 완료 — 이제 오프라인에서도 인식할 수 있습니다'); }
+    catch (e) { pg.close(); toast(e.message, 4000); }
+  };
+  const ps = $('#stPersist'); if (ps) ps.onclick = async () => { const ok = await navigator.storage.persist(); toast(ok ? '영구 저장이 허용되었습니다' : '브라우저가 거부했습니다. 홈 화면에 추가 후 다시 시도하세요', 3500); openSettings(); };
+  $('#stWipe').onclick = async () => {
+    if (!confirm('모든 라운드 기록을 삭제합니다. 되돌릴 수 없습니다. 계속할까요?')) return;
+    if (!confirm('정말 삭제할까요? (백업을 먼저 권장합니다)')) return;
+    await DB.clear(); S.rounds = []; toast('모두 삭제했습니다'); openSettings();
+  };
+}
+$('#settingsBtn').onclick = openSettings;
+async function exportBackup() {
+  const data = { app: 'golf-score-calendar', version: 1, exportedAt: new Date().toISOString(), settings: S.settings, clubMap: S.clubMap, rounds: S.rounds };
+  const name = `golf-scores-${ymd(new Date())}.json`;
+  const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
+  try {
+    const file = new File([blob], name, { type: 'application/json' });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: name }); return; }
+  } catch (e) { if (e.name === 'AbortError') return; }
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+}
+$('#importIn').onchange = async e => {
+  const f = e.target.files[0]; if (!f) return;
+  try {
+    const d = JSON.parse(await f.text());
+    if (!d || !Array.isArray(d.rounds)) throw new Error('백업 파일 형식이 아닙니다');
+    let n = 0;
+    for (const r of d.rounds) { if (r && r.id && r.date && Array.isArray(r.players) && Array.isArray(r.courses)) { await DB.put(r); n++; } }
+    if (d.clubMap) { S.clubMap = Object.assign({}, d.clubMap, S.clubMap); await DB.set('clubMap', S.clubMap); }
+    if (d.settings && !S.settings.myName && d.settings.myName) { S.settings.myName = d.settings.myName; await DB.set('settings', S.settings); }
+    S.rounds = await DB.all(); toast(`${n}건을 가져왔습니다`); openSettings();
+  } catch (err) { toast('가져오기 실패: ' + err.message, 4000); }
+};
+
+/* ================= progress overlay ================= */
+function showProgress(title) {
+  const el = document.createElement('div'); el.className = 'progress';
+  el.innerHTML = `<div class="pbox"><b>${esc(title)}</b><div class="d" style="font-size:13px;color:var(--muted);margin-top:6px" id="pgMsg">준비 중…</div><div class="bar"><i id="pgBar"></i></div></div>`;
+  document.body.appendChild(el);
+  return {
+    set: (msg, frac) => { const m = el.querySelector('#pgMsg'), b = el.querySelector('#pgBar'); if (msg) m.textContent = msg; if (frac != null) b.style.width = Math.round(Math.min(1, frac) * 100) + '%'; },
+    close: () => el.remove(),
+  };
+}
+
+/* ================= OCR (scorecard image → round) ================= */
+const OCR = (() => {
+  const LIB = 'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js';
+  let libP = null, numW = null, numW8 = null, txtW = null;
+  function loadLib() {
+    if (window.Tesseract) return Promise.resolve(window.Tesseract);
+    return libP || (libP = new Promise((res, rej) => {
+      const s = document.createElement('script'); s.src = LIB; s.async = true;
+      s.onload = () => res(window.Tesseract);
+      s.onerror = () => { libP = null; s.remove(); rej(new Error('인식 엔진을 불러오지 못했습니다. 첫 사용은 인터넷 연결이 필요합니다.')); };
+      document.head.appendChild(s);
+    }));
+  }
+  const withTimeout = (p, ms, msg) => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error(msg)), ms))]);
+  async function prepare(progress) {
+    const T = await loadLib();
+    const log = label => m => { if (progress && m.status) progress(`${label}: ${m.status}`, m.progress); };
+    if (!numW) {
+      const w = await withTimeout(T.createWorker('eng', 1, { logger: log('숫자 인식기') }), 120000, '인식 엔진 준비 시간 초과 (네트워크 확인)');
+      await w.setParameters({ tessedit_pageseg_mode: '7', tessedit_char_whitelist: '+-0123456789 ' });
+      numW = w;
+    }
+    if (!numW8) { // fallback for isolated single digits that PSM 7 sometimes returns empty
+      const w = await withTimeout(T.createWorker('eng', 1), 120000, '인식 엔진 준비 시간 초과 (네트워크 확인)');
+      await w.setParameters({ tessedit_pageseg_mode: '8', tessedit_char_whitelist: '+-0123456789' });
+      numW8 = w;
+    }
+    if (!txtW) {
+      const w = await withTimeout(T.createWorker(['kor', 'eng'], 1, { logger: log('한글 인식기') }), 180000, '한글 데이터 다운로드 시간 초과 (네트워크 확인)');
+      await w.setParameters({ tessedit_pageseg_mode: '7' });
+      txtW = w;
+    }
+  }
+
+  /* ---- image analysis ---- */
+  function loadImage(file) {
+    return new Promise((res, rej) => {
+      const url = URL.createObjectURL(file); const img = new Image();
+      img.onload = () => res(img); img.onerror = () => rej(new Error('이미지를 열 수 없습니다'));
+      img.src = url;
+    });
+  }
+  function thumb(img) {
+    const w = Math.min(900, img.naturalWidth), h = Math.round(img.naturalHeight * w / img.naturalWidth);
+    const c = document.createElement('canvas'); c.width = w; c.height = h;
+    c.getContext('2d').drawImage(img, 0, 0, w, h); return c.toDataURL('image/jpeg', 0.72);
+  }
+  const median = a => { if (!a.length) return 0; const s = a.slice().sort((x, y) => x - y); return s[s.length >> 1]; };
+
+  function analyze(img) {
+    let W = img.naturalWidth, H = img.naturalHeight;
+    const sc = W > 1500 ? 1500 / W : W < 700 ? 900 / W : 1;
+    W = Math.round(W * sc); H = Math.round(H * sc);
+    const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+    const cx = cv.getContext('2d', { willReadFrequently: true });
+    cx.fillStyle = '#fff'; cx.fillRect(0, 0, W, H); cx.drawImage(img, 0, 0, W, H);
+    const D = cx.getImageData(0, 0, W, H).data, N = W * H;
+    const L = new Uint8Array(N), SA = new Uint8Array(N), BL = new Uint8Array(N);
+    for (let i = 0, j = 0; i < N; i++, j += 4) {
+      const r = D[j], g = D[j + 1], b = D[j + 2];
+      L[i] = (r * 299 + g * 587 + b * 114) / 1000;
+      SA[i] = Math.max(r, g, b) - Math.min(r, g, b);
+      BL[i] = (b > r + 45 && b > 100) ? 1 : 0;
+    }
+    const step = Math.max(1, Math.floor(W / 400)), xa = Math.floor(W * 0.03), xb = Math.floor(W * 0.97);
+    const minH = Math.max(6, Math.round(W * 0.012));
+    // 1) blue (header / par) rows
+    const blueFrac = new Float32Array(H), medR = new Float32Array(H);
+    for (let y = 0; y < H; y++) {
+      let n = 0, bl = 0; const rs = [];
+      for (let x = xa; x < xb; x += step) { n++; const i = y * W + x; if (BL[i]) { bl++; rs.push(D[i * 4]); } }
+      blueFrac[y] = bl / n; medR[y] = median(rs);
+    }
+    const runs = [];
+    for (let y = 0; y < H; y++) {
+      if (blueFrac[y] > 0.55) {
+        const last = runs[runs.length - 1];
+        if (last && y - last.y1 <= 3) last.y1 = y; else runs.push({ y0: y, y1: y });
+      }
+    }
+    const blueRuns = runs.filter(r => r.y1 - r.y0 + 1 >= minH);
+    const sections = [];
+    for (const run of blueRuns) {
+      const vals = []; for (let y = run.y0; y <= run.y1; y++) vals.push(medR[y]);
+      const lo = Math.min(...vals), hi = Math.max(...vals);
+      let Hb = { y0: run.y0, y1: run.y1 }, Pb = null;
+      if (hi - lo > 25) {
+        const thr = (lo + hi) / 2, segs = [];
+        for (let y = run.y0; y <= run.y1; y++) {
+          const k = medR[y] < thr ? 'H' : 'P', last = segs[segs.length - 1];
+          if (last && last.k === k) last.y1 = y; else segs.push({ k, y0: y, y1: y });
+        }
+        const big = segs.filter(s => s.y1 - s.y0 + 1 >= minH * 0.5);
+        const hs = big.find(s => s.k === 'H');
+        if (hs) { Hb = hs; Pb = big.find(s => s.k === 'P' && s.y0 > hs.y0) || null; }
+      }
+      sections.push({ H: Hb, P: Pb });
+    }
+    if (!sections.length) throw new Error('스코어 표를 찾지 못했습니다');
+    // 2) per section: table x-range, columns, player rows
+    const out = { W, H, L, SA, sections: [], topY: sections[0].H.y0, canvas: cv };
+    sections.forEach((sec, si) => {
+      const ym = Math.round((sec.H.y0 + sec.H.y1) / 2);
+      let tx0 = 0, tx1 = W - 1;
+      for (let x = 0; x < W; x++) if (BL[ym * W + x]) { tx0 = x; break; }
+      for (let x = W - 1; x >= 0; x--) if (BL[ym * W + x]) { tx1 = x; break; }
+      const band = sec.H; // columns from white text in header band (fallback: par band)
+      let cols = findColumns(band, tx0, tx1);
+      if (cols.holes.length < 3 && sec.P) cols = findColumns(sec.P, tx0, tx1);
+      if (cols.holes.length < 3) return;
+      const yA = (sec.P || sec.H).y1 + 1, yB = si + 1 < sections.length ? sections[si + 1].H.y0 - 1 : H - 1;
+      const rows = findTextRows(yA, yB, tx0, tx1);
+      out.sections.push({ H: sec.H, P: sec.P, tx0, tx1, ...cols, rows });
+    });
+    if (!out.sections.length) throw new Error('홀 번호 열을 찾지 못했습니다');
+    return out;
+
+    function findColumns(band, tx0, tx1) {
+      const proj = new Uint16Array(W);
+      for (let y = band.y0; y <= band.y1; y++) for (let x = tx0 + 3; x < tx1 - 3; x++) { const i = y * W + x; if (L[i] > 175 && SA[i] < 70) proj[x]++; }
+      const gap = Math.max(4, Math.round(W * 0.018)), cs = [];
+      let cur = null;
+      for (let x = tx0 + 3; x < tx1 - 3; x++) {
+        if (proj[x] > 0) { if (cur && x - cur.x1 <= gap) cur.x1 = x; else { cur = { x0: x, x1: x }; cs.push(cur); } }
+      }
+      cs.forEach(c => c.c = (c.x0 + c.x1) / 2);
+      let best = [];
+      for (let i = 0; i + 1 < cs.length; i++) {
+        const pitch = cs[i + 1].c - cs[i].c; if (pitch < W * 0.025) continue;
+        const run = [cs[i], cs[i + 1]];
+        for (let k = i + 1; k + 1 < cs.length && Math.abs(cs[k + 1].c - cs[k].c - pitch) < pitch * 0.2; k++) run.push(cs[k + 1]);
+        if (run.length > best.length) best = run;
+      }
+      if (best.length < 3) return { holes: [] };
+      const diffs = []; for (let i = 1; i < best.length; i++) diffs.push(best[i].c - best[i - 1].c);
+      const pitch = median(diffs);
+      const holes = best.map(c => ({ x0: Math.round(c.c - pitch / 2), x1: Math.round(c.c + pitch / 2) }));
+      return {
+        holes, pitch,
+        label: { x0: tx0 + Math.round(W * 0.01), x1: holes[0].x0 },
+        total: { x0: holes[holes.length - 1].x1, x1: tx1 - Math.round(W * 0.006) },
+      };
+    }
+    function findTextRows(yA, yB, tx0, tx1) {
+      const isText = new Uint8Array(H); let grayRun = 0, end = yB;
+      for (let y = yA; y <= yB; y++) {
+        let n = 0, ink = 0; const ls = [];
+        for (let x = tx0 + 4; x < tx1 - 4; x += step) { n++; const l = L[y * W + x]; if (l < 110) ink++; ls.push(l); }
+        const f = ink / n;
+        if (f > 0.5) { grayRun = 0; continue; } // table rule line
+        if (median(ls) < 232) { if (++grayRun >= Math.max(6, minH * 0.6)) { end = y - grayRun; break; } continue; } else grayRun = 0;
+        if (f > 0.002) isText[y] = 1;
+      }
+      const bands = [], mg = Math.max(2, Math.round(W * 0.004));
+      for (let y = yA; y <= end; y++) if (isText[y]) {
+        const last = bands[bands.length - 1];
+        if (last && y - last.y1 <= mg) last.y1 = y; else bands.push({ y0: y, y1: y });
+      }
+      return bands.filter(b => b.y1 - b.y0 + 1 >= minH * 0.8).slice(0, 6).map(b => {
+        const p = Math.max(2, Math.round((b.y1 - b.y0) * 0.2)); return { y0: Math.max(yA, b.y0 - p), y1: Math.min(end, b.y1 + p) };
+      });
+    }
+  }
+
+  /* binarize one cell → black-on-white canvas (or null if blank) */
+  function cellCanvas(A, x0, x1, y0, y1, light) {
+    const { W, L, SA } = A;
+    x0 = Math.max(0, Math.round(x0)); x1 = Math.min(W - 1, Math.round(x1));
+    const w = x1 - x0 + 1, h = y1 - y0 + 1; if (w < 3 || h < 3) return null;
+    const ink = new Uint8Array(w * h);
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      const i = (y0 + y) * W + x0 + x;
+      ink[y * w + x] = light ? (L[i] > 180 && SA[i] < 70 ? 1 : 0) : (L[i] < 115 ? 1 : 0);
+    }
+    for (let y = 0; y < h; y++) { let c = 0; for (let x = 0; x < w; x++) c += ink[y * w + x]; if (c > w * 0.7) for (let x = 0; x < w; x++) ink[y * w + x] = 0; }
+    for (let x = 0; x < w; x++) { let c = 0; for (let y = 0; y < h; y++) c += ink[y * w + x]; if (c > h * 0.75) for (let y = 0; y < h; y++) ink[y * w + x] = 0; }
+    // connected components (drop specks, detect leading minus)
+    const lab = new Int32Array(w * h), comps = [];
+    for (let s = 0; s < w * h; s++) {
+      if (!ink[s] || lab[s]) continue;
+      const id = comps.length + 1, st = [s]; lab[s] = id;
+      const c = { x0: w, x1: 0, y0: h, y1: 0, n: 0 };
+      while (st.length) {
+        const q = st.pop(), qx = q % w, qy = (q / w) | 0; c.n++;
+        if (qx < c.x0) c.x0 = qx; if (qx > c.x1) c.x1 = qx; if (qy < c.y0) c.y0 = qy; if (qy > c.y1) c.y1 = qy;
+        for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+          const nx = qx + dx, ny = qy + dy; if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+          const k = ny * w + nx; if (ink[k] && !lab[k]) { lab[k] = id; st.push(k); }
+        }
+      }
+      comps.push(c);
+    }
+    const minN = Math.max(4, Math.round(h * h * 0.004));
+    const keep = comps.map((c, i) => c.n >= minN ? i + 1 : 0).filter(Boolean);
+    if (!keep.length) return null;
+    let bx0 = w, bx1 = 0, by0 = h, by1 = 0;
+    keep.forEach(id => { const c = comps[id - 1]; bx0 = Math.min(bx0, c.x0); bx1 = Math.max(bx1, c.x1); by0 = Math.min(by0, c.y0); by1 = Math.max(by1, c.y1); });
+    const bh = by1 - by0 + 1, bw = bx1 - bx0 + 1;
+    const sorted = keep.map(id => comps[id - 1]).sort((a, b) => a.x0 - b.x0);
+    const f = sorted[0], fh = f.y1 - f.y0 + 1, fw = f.x1 - f.x0 + 1, fc = (f.y0 + f.y1) / 2;
+    const minus = sorted.length >= 2 && fh <= bh * 0.35 && fw >= fh * 1.4 && fc > by0 + bh * 0.25 && fc < by0 + bh * 0.75;
+    const onlyDash = sorted.length === 1 && fh <= Math.max(4, fw * 0.4) && bh < h * 0.3;
+    // render
+    const target = 44, s = Math.max(0.5, Math.min(6, target / bh)), padPx = 24;
+    const src = document.createElement('canvas'); src.width = bw; src.height = bh;
+    const sx = src.getContext('2d'), im = sx.createImageData(bw, bh);
+    const keepSet = new Set(keep);
+    for (let y = 0; y < bh; y++) for (let x = 0; x < bw; x++) {
+      const k = (by0 + y) * w + bx0 + x, on = keepSet.has(lab[k]), o = (y * bw + x) * 4;
+      im.data[o] = im.data[o + 1] = im.data[o + 2] = on ? 0 : 255; im.data[o + 3] = 255;
+    }
+    sx.putImageData(im, 0, 0);
+    const outc = document.createElement('canvas');
+    outc.width = Math.round(bw * s) + padPx * 2; outc.height = Math.round(bh * s) + padPx * 2;
+    const ox = outc.getContext('2d'); ox.fillStyle = '#fff'; ox.fillRect(0, 0, outc.width, outc.height);
+    ox.imageSmoothingEnabled = true; ox.drawImage(src, padPx, padPx, Math.round(bw * s), Math.round(bh * s));
+    // trailing small blobs in the upper half = masking asterisks (e.g. "박**")
+    let stars = 0, cutX = null;
+    for (let i = sorted.length - 1; i > 0; i--) {
+      const c = sorted[i], ch = c.y1 - c.y0 + 1;
+      const bigMaxX = Math.max(...sorted.slice(0, i).filter(o => o.y1 > by0 + bh * 0.75).map(o => o.x1), -1);
+      if (bigMaxX >= 0 && c.x0 > bigMaxX && ch <= bh * 0.6 && c.y1 <= by0 + bh * 0.75) { stars++; cutX = c.x0; } else break;
+    }
+    return { canvas: outc, minus, onlyDash, comps: sorted.length, stars, cutX: cutX == null ? null : x0 + cutX };
+  }
+  async function readNum(A, x0, x1, y0, y1, light) {
+    const c = cellCanvas(A, x0, x1, y0, y1, light);
+    if (!c) return { v: null, blank: true };
+    if (c.onlyDash) return { v: null, blank: true };
+    let txt = ((await numW.recognize(c.canvas)).data.text || '').trim();
+    if (!/\d/.test(txt)) txt = ((await numW8.recognize(c.canvas)).data.text || '').trim();
+    const nums = txt.match(/\d+/g);
+    if (!nums) return { v: null, fail: true, txt };
+    let v = parseInt(nums[0], 10);
+    if (c.minus || (/-\s*\d/.test(txt) && c.comps >= 2)) v = -Math.abs(v);
+    return { v, all: nums.map(Number), txt };
+  }
+  async function readText(A, x0, x1, y0, y1, light) {
+    let c = cellCanvas(A, x0, x1, y0, y1, light);
+    if (!c) return '';
+    let suffix = '';
+    if (c.stars && c.cutX > x0 + 4) {
+      const head = cellCanvas(A, x0, c.cutX - 2, y0, y1, light);
+      if (head) { suffix = '*'.repeat(c.stars); c = head; }
+    }
+    const { data } = await txtW.recognize(c.canvas);
+    let t = (data.text || '').replace(/\s+/g, '').replace(/[^0-9A-Za-z가-힣*＊()]/g, '');
+    if (suffix) t = t.replace(/[*＊]+$/, '') + suffix;
+    return t;
+  }
+  async function readTop(A) {
+    if (A.topY < 20) return '';
+    const c = document.createElement('canvas'); c.width = A.W; c.height = A.topY;
+    c.getContext('2d').drawImage(A.canvas, 0, 0, A.W, A.topY, 0, 0, A.W, A.topY);
+    await txtW.setParameters({ tessedit_pageseg_mode: '11' });
+    try { const { data } = await txtW.recognize(c); return data.text || ''; }
+    finally { await txtW.setParameters({ tessedit_pageseg_mode: '7' }); }
+  }
+  function parseTop(text) {
+    const res = {}; const t = text.replace(/[Oo]/g, m => m).replace(/\s+/g, ' ');
+    const dm = t.match(/(20\d{2})\s*[\/.\-년]\s*(\d{1,2})\s*[\/.\-월]\s*(\d{1,2})/);
+    let rest = t;
+    if (dm) { const y = +dm[1], m = +dm[2], d = +dm[3]; if (m >= 1 && m <= 12 && d >= 1 && d <= 31) res.date = `${y}-${pad(m)}-${pad(d)}`; rest = t.replace(dm[0], ' '); }
+    const tm = rest.match(/(AM|PM|A\.M|P\.M|오전|오후)?\s*([0-2]?\d)\s*[:;：]\s*([0-5]\d)/i);
+    if (tm) {
+      let hh = +tm[2]; const mm = +tm[3], ap = (tm[1] || '').toUpperCase();
+      if ((ap.startsWith('P') || ap === '오후') && hh < 12) hh += 12;
+      if ((ap.startsWith('A') || ap === '오전') && hh === 12) hh = 0;
+      if (hh < 24) res.time = `${pad(hh)}:${pad(mm)}`;
+    }
+    return res;
+  }
+
+  async function recognize(file, progress) {
+    progress('이미지 분석 중…', 0.02);
+    const img = await loadImage(file);
+    const image = thumb(img);
+    let A;
+    try { A = analyze(img); } catch (e) { return { image, error: e.message }; }
+    progress('인식 엔진 준비 중… (첫 사용 시 다운로드)', 0.05);
+    await prepare((m, f) => progress(m, 0.05 + (f || 0) * 0.15));
+    const secs = A.sections, totalCells = secs.reduce((s, x) => s + (x.rows.length + 1) * (x.holes.length + 2), 0) + 1;
+    let done = 0; const tick = () => progress(`스코어 읽는 중… ${Math.round(++done / totalCells * 100)}%`, 0.2 + 0.8 * done / totalCells);
+    const top = parseTop(await readTop(A)); tick();
+    const R = [];
+    for (const s of secs) {
+      const sec = { name: '', par: [], parTotal: null, rows: [] };
+      sec.name = await readText(A, s.label.x0, s.label.x1, s.H.y0, s.H.y1, true); tick();
+      if (s.P) {
+        for (const hc of s.holes) { const r = await readNum(A, hc.x0, hc.x1, s.P.y0, s.P.y1, true); sec.par.push(r.v); tick(); }
+        const t = await readNum(A, s.total.x0, s.total.x1, s.P.y0, s.P.y1, true); sec.parTotal = t.v; tick();
+      } else { sec.par = s.holes.map(() => null); done += s.holes.length + 1; }
+      for (const row of s.rows) {
+        const pr = { name: '', vals: [], fail: [], total: null };
+        pr.name = await readText(A, s.label.x0, s.label.x1, row.y0, row.y1, false); tick();
+        for (const hc of s.holes) { const r = await readNum(A, hc.x0, hc.x1, row.y0, row.y1, false); pr.vals.push(r.v); pr.fail.push(!!r.fail); tick(); }
+        const t = await readNum(A, s.total.x0, s.total.x1, row.y0, row.y1, false); pr.total = t.all ? t.all[0] : null; tick();
+        sec.rows.push(pr);
+      }
+      R.push(sec);
+    }
+    return { image, top, sections: R };
+  }
+
+  /* convert recognition result → editable round */
+  function toRound(res, fallbackDate, myName) {
+    const r = { id: null, date: res.top?.date || fallbackDate, time: res.top?.time || '', club: '', memo: '', image: res.image, courses: [], players: [] };
+    const warn = [], notes = [], card = [];
+    if (!res.sections || !res.sections.length) {
+      notes.push('⚠️ ' + (res.error || '스코어 표를 인식하지 못했습니다') + ' — 직접 입력해 주세요.');
+      const b = blankRound(); b.image = res.image; b.date = r.date; return { r: b, warn, notes, card: null };
+    }
+    // course & par
+    res.sections.forEach((s, ci) => {
+      const name = s.name.replace(/^(코스|COURSE)/i, '');
+      const par = s.par.map((v, h) => { if (v >= 3 && v <= 6) return v; warn.push(`${ci}-par-${h}`); return 4; });
+      r.courses.push({ name, par });
+      if (s.parTotal && sum(par) !== s.parTotal) notes.push(`⚠️ ${name || `코스${ci + 1}`} PAR 합계가 카드(${s.parTotal})와 다릅니다 (${sum(par)})`);
+    });
+    // decide relative (+/-) vs absolute strokes by voting with card totals
+    let rel = 0, abs = 0;
+    res.sections.forEach((s, ci) => s.rows.forEach(p => {
+      if (p.total == null) return; const vs = sum(p.vals), ps = sum(r.courses[ci].par);
+      if (vs + ps === p.total) rel++; else if (vs === p.total) abs++;
+    }));
+    if (!rel && !abs) {
+      const all = res.sections.flatMap(s => s.rows.flatMap(p => p.vals)).filter(v => v != null);
+      rel = all.length && (sum(all) / all.length) < 2.6 ? 1 : 0; abs = rel ? 0 : 1;
+    }
+    const isRel = rel >= abs;
+    const np = Math.max(...res.sections.map(s => s.rows.length));
+    const mine = normName(myName);
+    for (let pi = 0; pi < np; pi++) {
+      const name = res.sections.map(s => s.rows[pi]?.name).find(Boolean) || '';
+      r.players.push({ name, me: false, scores: [] });
+    }
+    res.sections.forEach((s, ci) => {
+      card[ci] = [];
+      for (let pi = 0; pi < np; pi++) {
+        const p = s.rows[pi], par = r.courses[ci].par;
+        const sc = par.map((pv, h) => {
+          if (!p) return null; const v = p.vals[h];
+          if (v == null) { if (p.fail[h]) warn.push(`${ci}-${pi}-${h}`); return null; }
+          const st = isRel ? pv + v : v;
+          if (st < 1 || st > 15) { warn.push(`${ci}-${pi}-${h}`); return null; }
+          return st;
+        });
+        r.players[pi].scores[ci] = sc;
+        card[ci][pi] = p && p.total != null && p.total > 0 ? p.total : null;
+      }
+    });
+    let mi = mine ? r.players.findIndex(p => normName(p.name) && (normName(p.name) === mine || normName(p.name).includes(mine) || mine.includes(normName(p.name)))) : -1;
+    if (mi < 0) mi = 0;
+    if (r.players[mi]) r.players[mi].me = true;
+    // club guess from remembered course names
+    const key = r.courses.map(c => c.name).filter(Boolean).join('|');
+    r.club = S.clubMap[key] || r.courses.map(c => S.clubMap[c.name]).find(Boolean) || '';
+    let bad = 0;
+    card.forEach((cs, ci) => cs.forEach((t, pi) => { if (t != null && sum(r.players[pi].scores[ci]) !== t) bad++; }));
+    notes.unshift(bad || warn.length
+      ? `인식 결과를 확인해 주세요. 카드 합계와 다른 줄 ${bad}개, 확인 필요한 칸 ${warn.length}개가 표시되어 있습니다.`
+      : '✓ 모든 줄의 합계가 스코어카드와 일치합니다. 골프장명·날짜만 확인 후 저장하세요.');
+    if (!res.top?.date) notes.push('⚠️ 날짜를 읽지 못해 선택한 날짜로 설정했습니다.');
+    if (!r.club) notes.push('골프장명을 입력하면 다음부터 같은 코스명으로 자동 입력됩니다.');
+    notes.ok = !bad && !warn.length;
+    return { r, warn, notes, card, mode: isRel ? 'rel' : 'abs' };
+  }
+  return { prepare, recognize, toRound, _dbg: { analyze, cellCanvas, readNum, loadImage, w: () => numW } };
+})();
+
+$('#fileIn').onchange = async e => {
+  const f = e.target.files[0]; if (!f) return;
+  const pg = showProgress('스코어카드 인식');
+  let res;
+  try { res = await OCR.recognize(f, pg.set); }
+  catch (err) {
+    pg.close(); toast(err.message, 4000);
+    const b = blankRound();
+    try { const img = await new Promise((ok, no) => { const i = new Image(); i.onload = () => ok(i); i.onerror = no; i.src = URL.createObjectURL(f); });
+      const c = document.createElement('canvas'); const w = Math.min(900, img.naturalWidth); c.width = w; c.height = Math.round(img.naturalHeight * w / img.naturalWidth);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); b.image = c.toDataURL('image/jpeg', 0.72); } catch (_) {}
+    openEditor(b, { notes: ['이미지 인식을 사용할 수 없어 직접 입력 모드로 열었습니다.'] });
+    return;
+  }
+  pg.close();
+  const x = OCR.toRound(res, S.selected, S.settings.myName);
+  openEditor(x.r, { warn: x.warn, notes: x.notes, card: x.card, mode: x.mode });
+};
+
+/* ================= boot ================= */
+(async () => {
+  await loadAll();
+  render();
+  if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
+  if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(() => {});
+})();
+window.GolfApp = { S, OCR, DB };
+</script>
+</body>
+</html>
