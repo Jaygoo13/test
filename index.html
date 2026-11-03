@@ -176,6 +176,88 @@ table.ed td.t{min-width:40px;text-align:center;font-weight:800;font-size:14px}
 .set-item .d{font-size:12px;color:var(--muted)}
 .set-item button{white-space:nowrap}
 .help{font-size:13px;color:var(--muted);line-height:1.6}
+/* stats */
+:root{--d-under:#d64545;--d-par:#b3bab7;--d-b1:#6c9be0;--d-b2:#2f5fb0;--d-b3:#13285a;--bar-mute:#dfe5e1}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--d-under:#ff7b7b;--d-par:#6b7470;--d-b1:#2d58a8;--d-b2:#86aeea;--d-b3:#d6e4fb;--bar-mute:#2f3834}}
+:root[data-theme="dark"]{--d-under:#ff7b7b;--d-par:#6b7470;--d-b1:#2d58a8;--d-b2:#86aeea;--d-b3:#d6e4fb;--bar-mute:#2f3834}
+.chips-row{display:flex;gap:8px;overflow-x:auto;padding:2px 0 12px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.chips-row::-webkit-scrollbar{display:none}
+.ychip{flex:none;padding:7px 16px;border-radius:999px;background:var(--card);color:var(--muted);font-weight:700;font-size:14px;border:1px solid var(--line)}
+.ychip.on{background:var(--accent);color:var(--accent-text);border-color:var(--accent)}
+.st{background:var(--card);border-radius:16px;padding:16px;margin-bottom:14px;box-shadow:var(--shadow)}
+.st h3{margin:0 0 12px;font-size:16px;display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.st h3 small{font-size:12px;color:var(--muted);font-weight:500}
+.st .cap{font-size:12px;color:var(--muted);margin-top:8px}
+details.st > summary{list-style:none;cursor:pointer}
+details.st > summary::-webkit-details-marker{display:none}
+details.st > summary h3{margin:0}
+details.st[open] > summary h3{margin-bottom:12px}
+details.st > summary h3::after{content:"⌄";color:var(--muted);font-size:18px;line-height:1}
+details.st[open] > summary h3::after{content:"⌃"}
+.hero{text-align:center;padding:6px 0 12px}
+.hero .who{font-size:14px;color:var(--muted)}
+.hero .big{font-size:40px;font-weight:800;letter-spacing:-1px;line-height:1.15}
+.hero .big small{font-size:16px;font-weight:600;letter-spacing:0}
+.mm{display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:stretch;margin-top:10px}
+.mm .lbl{font-size:12px;color:var(--muted);font-weight:600;margin-bottom:6px}
+.mm .gap{align-self:center;background:var(--accent-soft);color:var(--accent);font-weight:800;border-radius:999px;padding:6px 10px;font-size:14px;white-space:nowrap}
+.mmc{background:var(--bg);border-radius:12px;padding:10px 12px;text-align:left}
+.mmc.r{text-align:right}
+.mmc b{display:block;font-size:30px;line-height:1.1}
+.mmc .club{font-size:13px;font-weight:700;margin-top:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mmc .dt{font-size:12px;color:var(--muted)}
+.vbars{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;align-items:end;height:190px;padding-top:24px}
+.vb{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:4px}
+.vb .n{font-size:13px;font-weight:700}
+.vb .tag{font-size:10px;font-weight:700;padding:1px 6px;border-radius:999px;background:var(--text);color:var(--card)}
+.vb .bar{width:100%;max-width:44px;border-radius:8px 8px 4px 4px;background:var(--bar-mute);min-height:3px;display:flex;align-items:flex-end;justify-content:center}
+.vb .bar.hi{background:var(--accent)}
+.vb .bar span{font-size:10px;font-weight:700;color:var(--accent-text);padding-bottom:4px}
+.vb .bar:not(.hi) span{color:var(--text)}
+.vlab{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:6px;text-align:center;font-size:12px;color:var(--muted);font-weight:600}
+.hb{display:grid;grid-template-columns:52px 1fr 58px;gap:10px;align-items:center;margin-bottom:10px;font-size:14px}
+.hb .k{color:var(--muted);font-weight:700}
+.hb .t{height:26px;border-radius:4px;background:var(--bg);overflow:hidden}
+.hb .t i{display:flex;align-items:center;justify-content:flex-end;height:100%;background:var(--accent);border-radius:4px 8px 8px 4px;color:var(--accent-text);font-style:normal;font-weight:700;font-size:13px;padding-right:8px;min-width:26px}
+.hb .v{text-align:right;font-weight:700}
+.legend{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:10px}
+.legend span::before{content:"";display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px;background:var(--accent)}
+.legend span.avg::before{background:transparent;border:2px solid var(--muted);width:6px;height:6px;border-radius:50%}
+.line-wrap{position:relative}
+.line-wrap svg{display:block;width:100%;height:auto;overflow:visible}
+.line-wrap .tip{position:absolute;transform:translate(-50%,-110%);background:var(--text);color:var(--card);font-size:12px;font-weight:700;padding:4px 8px;border-radius:8px;white-space:nowrap;pointer-events:none}
+.stack{display:flex;gap:2px;height:22px;border-radius:6px;overflow:hidden;margin-bottom:12px}
+.stack i{display:block;height:100%}
+.dist-row{display:grid;grid-template-columns:14px 1fr auto auto;gap:10px;align-items:center;padding:9px 0;border-bottom:1px solid var(--line);font-size:14px}
+.dist-row:last-child{border-bottom:0}
+.dist-row .dot{width:12px;height:12px;border-radius:4px}
+.dist-row .pc{color:var(--muted);font-size:13px;min-width:42px;text-align:right}
+.dist-row .ct{font-weight:800;min-width:36px;text-align:right}
+.tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}
+.tile{background:var(--bg);border-radius:10px;padding:8px;text-align:center}
+.tile b{display:block;font-size:18px}
+.tile span{font-size:11px;color:var(--muted)}
+.rk{display:grid;grid-template-columns:20px 44px 1fr auto;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line);text-align:left;width:100%}
+.rk:last-child{border-bottom:0}
+.rk .no{font-weight:800;font-style:italic;color:var(--muted);font-size:18px}
+.rk .ini{width:44px;height:44px;border-radius:12px;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;font-weight:800;font-size:17px}
+.rk .m{min-width:0}
+.rk .m .d{font-size:12px;color:var(--muted)}
+.rk .m .c{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rk .r{text-align:right}
+.rk .r .s{font-size:12px;color:var(--muted)}
+.rk .r .x{font-size:18px;font-weight:800;color:var(--accent)}
+.rk .r .x.plain{color:var(--text)}
+.best{border:1.5px solid var(--line);border-radius:14px;padding:12px;margin-bottom:10px;width:100%;text-align:left;display:block}
+.best.life{border-color:var(--accent)}
+.best .btop{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.best .crs{font-size:12px;color:var(--muted)}
+.best .club{font-size:17px;font-weight:800}
+.best .sc{background:var(--accent);color:var(--accent-text);font-size:24px;font-weight:800;border-radius:12px;min-width:56px;padding:8px;text-align:center}
+.best .badge{display:inline-block;font-size:11px;font-weight:800;color:var(--accent);background:var(--accent-soft);border-radius:999px;padding:2px 8px;margin-bottom:4px}
+.best .meta{font-size:13px;color:var(--muted);margin-top:8px;border-top:1px solid var(--line);padding-top:8px}
+.morebtn{width:100%;padding:10px;color:var(--accent);font-weight:700;font-size:14px}
+
 </style>
 </head>
 <body>
@@ -187,8 +269,8 @@ table.ed td.t{min-width:40px;text-align:center;font-weight:800;font-size:14px}
   </div>
   <div class="sub-row">
     <button class="pill" id="todayBtn">오늘</button>
-    <div class="seg" style="margin:0;width:150px" id="viewSeg">
-      <button data-v="month">월간</button><button data-v="day">일간</button>
+    <div class="seg" style="margin:0;width:200px" id="viewSeg">
+      <button data-v="month">월간</button><button data-v="day">일간</button><button data-v="stats">통계</button>
     </div>
     <button class="icon-btn" id="settingsBtn" aria-label="설정"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
   </div>
@@ -257,7 +339,7 @@ const DB = (() => {
 /* ================= state & model ================= */
 const S = {
   view: 'month', cursor: new Date(), selected: ymd(new Date()),
-  rounds: [], settings: { myName: '' }, clubMap: {},
+  rounds: [], settings: { myName: '' }, clubMap: {}, statYear: 'all', clubAll: false,
 };
 const meIdx = r => { const i = r.players.findIndex(p => p.me); return i < 0 ? 0 : i; };
 const parTotal = r => sum(r.courses.flatMap(c => c.par));
@@ -277,7 +359,9 @@ const saveUi = () => DB.set('ui', { view: S.view }).catch(() => {});
 /* ================= rendering ================= */
 function render() {
   document.querySelectorAll('#viewSeg button').forEach(b => b.classList.toggle('on', b.dataset.v === S.view));
-  if (S.view === 'month') renderMonth(); else renderDay();
+  const st = S.view === 'stats';
+  ['#prev', '#next', '#todayBtn'].forEach(q => $(q).style.visibility = st ? 'hidden' : '');
+  if (S.view === 'month') renderMonth(); else if (st) renderStats(); else renderDay();
 }
 function renderMonth() {
   const y = S.cursor.getFullYear(), m = S.cursor.getMonth();
@@ -364,8 +448,186 @@ function renderDay() {
   }).join('');
 }
 
+/* ================= statistics ================= */
+// my 18-hole total (rounds with fewer than 18 holes entered are left out of score stats)
+const holesPlayed = r => r.players[meIdx(r)].scores.flat().filter(v => v != null).length;
+const isFull = r => holesPlayed(r) >= 18;
+const myTotal = r => playerTotal(r, meIdx(r));
+const fmtDate = s => s.replace(/-/g, '.');
+const avg = a => a.length ? sum(a) / a.length : null;
+const fx = (v, d = 1) => v == null ? '-' : v.toFixed(d);
+const SCORE_KINDS = [
+  { k: 'under', label: '버디 이하', test: d => d <= -1 },
+  { k: 'par', label: '파', test: d => d === 0 },
+  { k: 'b1', label: '보기', test: d => d === 1 },
+  { k: 'b2', label: '더블', test: d => d === 2 },
+  { k: 'b3', label: '트리플 이상', test: d => d >= 3 },
+];
+function holeDiffs(r) { // my per-hole score minus par
+  const p = r.players[meIdx(r)], out = [];
+  r.courses.forEach((c, ci) => c.par.forEach((par, h) => { const v = p.scores[ci]?.[h]; if (v != null && par) out.push({ d: v - par, par, v }); }));
+  return out;
+}
+const birdies = r => holeDiffs(r).filter(x => x.d <= -1).length;
+const goDay = date => { S.selected = date; const d = parseYmd(date); S.cursor = new Date(d.getFullYear(), d.getMonth(), 1); S.view = 'day'; saveUi(); render(); window.scrollTo(0, 0); };
+
+function renderStats() {
+  $('#title').textContent = '통계';
+  const all = S.rounds.slice().sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
+  if (!all.length) { $('#main').innerHTML = `<div class="empty">아직 기록이 없습니다.<br>스코어카드를 추가하면 통계가 표시됩니다.</div>`; return; }
+  const years = [...new Set(all.map(r => r.date.slice(0, 4)))].sort().reverse();
+  if (S.statYear !== 'all' && !years.includes(S.statYear)) S.statYear = 'all';
+  const Y = S.statYear, scope = Y === 'all' ? all : all.filter(r => r.date.startsWith(Y));
+  const full = scope.filter(isFull), allFull = all.filter(isFull);
+  let h = `<div class="chips-row">${['all', ...years].map(y => `<button class="ychip ${y === Y ? 'on' : ''}" data-year="${y}">${y === 'all' ? '전체' : y}</button>`).join('')}</div>`;
+  h += heroCard(all, allFull, full, Y);
+  h += bucketCard(full);
+  h += yearCard(all);
+  h += trendCard(all, Y);
+  h += monthCard(scope, Y);
+  h += distCard(scope);
+  h += birdieCard(scope);
+  h += clubCard(full);
+  h += bestCard(full, allFull);
+  if (scope.length !== full.length) h += `<div class="cap" style="text-align:center;color:var(--muted);font-size:12px;margin-bottom:20px">18홀 미만 라운드 ${scope.length - full.length}건은 타수 통계에서 제외하고 홀별 분포에만 포함했습니다.</div>`;
+  $('#main').innerHTML = h;
+  wireLine();
+}
+
+function mmBlock(label, lo, hi) {
+  if (!lo) return '';
+  const cell = (r, side, kind) => `<button class="mmc ${side}" data-goto="${r.date}"><div class="lbl">${kind}</div><b>${myTotal(r)}</b><div class="club">${esc(r.club || '골프장 미입력')}</div><div class="dt">${fmtDate(r.date)} ›</div></button>`;
+  return `<div class="lbl" style="font-size:13px;font-weight:700;margin:14px 0 0">${label}</div>
+    <div class="mm">${cell(lo, '', '최저타수 ▼')}<span class="gap">+${myTotal(hi) - myTotal(lo)}타</span>${cell(hi, 'r', '최고타수 ▲')}</div>`;
+}
+function loHi(list) {
+  if (!list.length) return [null, null];
+  const s = list.slice().sort((a, b) => myTotal(a) - myTotal(b) || a.date.localeCompare(b.date));
+  return [s[0], s[s.length - 1]];
+}
+function heroCard(all, allFull, full, Y) {
+  const name = S.settings.myName || (all[0] && all[0].players[meIdx(all[0])].name) || '나';
+  const y0 = +all[0].date.slice(0, 4), y1 = +all[all.length - 1].date.slice(0, 4), span = y1 - y0 + 1;
+  const [lo, hi] = loHi(allFull), [ylo, yhi] = loHi(full);
+  return `<section class="st"><div class="hero"><div class="who">${esc(name)}님은 ${span > 1 ? `${span}년 동안` : `${y0}년에`}</div>
+    <div class="big">총 ${all.length}<small> 라운드</small></div>
+    <div class="who">18홀 평균 <b style="color:var(--text)">${fx(avg(allFull.map(myTotal)), 2)}</b>타</div></div>
+    ${mmBlock('전체 기간', lo, hi)}
+    ${Y !== 'all' ? mmBlock(`${Y}년`, ylo, yhi) : ''}</section>`;
+}
+function bucketCard(full) {
+  const B = [['~72', v => v <= 72], ['73~81', v => v >= 73 && v <= 81], ['82~90', v => v >= 82 && v <= 90], ['91~99', v => v >= 91 && v <= 99], ['100~', v => v >= 100]];
+  const cnt = B.map(([, f]) => full.filter(r => f(myTotal(r))).length), n = full.length, mx = Math.max(...cnt, 1);
+  const nz = cnt.filter(c => c > 0), maxC = Math.max(...cnt), minC = nz.length > 1 ? Math.min(...nz) : -1;
+  return `<section class="st"><h3>라운드 타수별 분포 <small>18홀 ${n}라운드</small></h3>
+    <div class="vbars">${cnt.map((c, i) => `<div class="vb" title="${B[i][0]}: ${c}라운드">
+      ${c && c === maxC ? '<span class="tag">최다</span>' : c && c === minC ? '<span class="tag" style="background:var(--muted)">최소</span>' : ''}
+      <span class="n">${c}${c && c / mx < 0.25 ? `<small style="color:var(--muted);font-weight:600"> · ${Math.round(c / Math.max(n, 1) * 100)}%</small>` : ''}</span>
+      <div class="bar ${c && c === maxC ? 'hi' : ''}" style="height:${Math.max(2, c / mx * 100)}%">${c && c / mx >= 0.25 ? `<span>${Math.round(c / Math.max(n, 1) * 100)}%</span>` : ''}</div></div>`).join('')}</div>
+    <div class="vlab">${B.map(b => `<span>${b[0]}</span>`).join('')}</div></section>`;
+}
+function yearCard(all) {
+  const ys = [...new Set(all.map(r => r.date.slice(0, 4)))].sort().reverse();
+  const rows = ys.map(y => { const rs = all.filter(r => r.date.startsWith(y)); return { y, n: rs.length, a: avg(rs.filter(isFull).map(myTotal)) }; });
+  const mx = Math.max(...rows.map(r => r.n));
+  return `<section class="st"><h3>연도별 라운드 수 & 평균 스코어</h3>
+    <div class="legend"><span>라운드 수</span><span class="avg">18홀 평균</span></div>
+    ${rows.map(r => `<div class="hb"><span class="k">${r.y}</span><div class="t"><i style="width:${r.n / mx * 100}%">${r.n}</i></div><span class="v">${fx(r.a, 2)}</span></div>`).join('')}</section>`;
+}
+function monthsFor(all, Y) { // [{key:'2026-03', label:'3월'}...]
+  if (Y !== 'all') return Array.from({ length: 12 }, (_, i) => ({ key: `${Y}-${pad(i + 1)}`, label: `${i + 1}월` }));
+  const last = parseYmd(all[all.length - 1].date), out = [];
+  for (let i = 11; i >= 0; i--) { const d = new Date(last.getFullYear(), last.getMonth() - i, 1); out.push({ key: `${d.getFullYear()}-${pad(d.getMonth() + 1)}`, label: `${d.getMonth() + 1}월`, y: d.getFullYear() }); }
+  return out;
+}
+function trendCard(all, Y) {
+  const ms = monthsFor(all, Y).map(m => ({ ...m, a: avg(all.filter(r => r.date.startsWith(m.key) && isFull(r)).map(myTotal)) })).filter(m => m.a != null);
+  if (ms.length < 2) return `<section class="st"><h3>한눈에 보는 스코어 <small>월 평균</small></h3><div class="cap">두 달 이상 기록이 쌓이면 추이 그래프가 표시됩니다.</div></section>`;
+  const W = 340, H = 170, pl = 10, pr = 10, pt = 26, pb = 26;
+  const lo = Math.min(...ms.map(m => m.a)), hi = Math.max(...ms.map(m => m.a)), padv = Math.max(1, (hi - lo) * 0.15);
+  const y = v => pt + (v - (lo - padv)) / ((hi + padv) - (lo - padv)) * (H - pt - pb); // lower score = higher on chart
+  const x = i => pl + (ms.length === 1 ? 0.5 : i / (ms.length - 1)) * (W - pl - pr);
+  const pts = ms.map((m, i) => [x(i), y(m.a)]);
+  const path = pts.map((p, i) => `${i ? 'L' : 'M'}${p[0].toFixed(1)},${p[1].toFixed(1)}`).join('');
+  const area = `${path}L${pts[pts.length - 1][0].toFixed(1)},${H - pb}L${pts[0][0].toFixed(1)},${H - pb}Z`;
+  const bi = ms.reduce((b, m, i) => m.a < ms[b].a ? i : b, 0), li = ms.length - 1;
+  const grid = [0, 1, 2, 3].map(k => { const yy = pt + k * (H - pt - pb) / 3; return `<line x1="0" x2="${W}" y1="${yy}" y2="${yy}" stroke="var(--line)" stroke-width="1"/>`; }).join('');
+  return `<section class="st"><h3>한눈에 보는 스코어 <small>월 평균 · 위로 갈수록 좋은 스코어</small></h3>
+    <div class="line-wrap" id="lineWrap"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="월별 평균 스코어 추이">
+      <defs><linearGradient id="ga" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(--accent)" stop-opacity=".28"/><stop offset="1" stop-color="var(--accent)" stop-opacity="0"/></linearGradient></defs>
+      ${grid}<path d="${area}" fill="url(#ga)"/><path d="${path}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round"/>
+      ${pts.map((p, i) => `<circle cx="${p[0]}" cy="${p[1]}" r="5" fill="var(--card)" stroke="var(--accent)" stroke-width="2"/>`).join('')}
+      ${[...new Set([bi, li])].map(i => `<text x="${pts[i][0]}" y="${pts[i][1] - 10}" text-anchor="${i === li && li > 0 ? 'end' : 'middle'}" font-size="11" font-weight="700" fill="var(--text)">${i === bi ? '최고 ' : ''}${ms[i].a.toFixed(1)}</text>`).join('')}
+      ${ms.map((m, i) => `<text x="${pts[i][0]}" y="${H - 6}" text-anchor="middle" font-size="10" fill="var(--muted)">${m.label}</text>`).join('')}
+      ${ms.map((m, i) => `<rect x="${pts[i][0] - 16}" y="0" width="32" height="${H}" fill="transparent" data-tip="${m.key.replace('-', '.')} · ${m.a.toFixed(2)}타" data-x="${pts[i][0] / W}" data-y="${pts[i][1] / H}"/>`).join('')}
+    </svg></div></section>`;
+}
+function wireLine() {
+  const w = document.getElementById('lineWrap'); if (!w) return;
+  let tip = null;
+  const show = el => {
+    if (!el || !el.dataset.tip) return; if (!tip) { tip = document.createElement('div'); tip.className = 'tip'; w.appendChild(tip); }
+    tip.textContent = el.dataset.tip; tip.style.left = (+el.dataset.x * 100) + '%'; tip.style.top = (+el.dataset.y * w.clientHeight) + 'px';
+  };
+  w.addEventListener('pointermove', e => show(e.target.closest('rect')));
+  w.addEventListener('click', e => show(e.target.closest('rect')));
+  w.addEventListener('pointerleave', () => { if (tip) { tip.remove(); tip = null; } });
+}
+function monthCard(scope, Y) {
+  if (Y === 'all') return '';
+  const rows = Array.from({ length: 12 }, (_, i) => { const k = `${Y}-${pad(i + 1)}`, rs = scope.filter(r => r.date.startsWith(k)); return { m: `${i + 1}월`, n: rs.length, a: avg(rs.filter(isFull).map(myTotal)) }; }).filter(r => r.n);
+  const mx = Math.max(...rows.map(r => r.n), 1);
+  return `<section class="st"><h3>월별 라운드 수 & 평균 스코어 <small>${Y}년</small></h3>
+    <div class="legend"><span>라운드 수</span><span class="avg">18홀 평균</span></div>
+    ${rows.map(r => `<div class="hb"><span class="k">${r.m}</span><div class="t"><i style="width:${r.n / mx * 100}%">${r.n}</i></div><span class="v">${fx(r.a, 2)}</span></div>`).join('')}</section>`;
+}
+function distCard(scope) {
+  const ds = scope.flatMap(holeDiffs), n = ds.length;
+  if (!n) return '';
+  const c = SCORE_KINDS.map(s => ({ ...s, n: ds.filter(x => s.test(x.d)).length }));
+  const pa = [3, 4, 5].map(p => avg(ds.filter(x => x.par === p).map(x => x.v)));
+  return `<section class="st"><h3>스코어 분포 <small>${n}홀 기준</small></h3>
+    <div class="stack" role="img" aria-label="홀 스코어 비율">${c.filter(k => k.n).map(k => `<i style="flex:${k.n};background:var(--d-${k.k})" title="${k.label} ${k.n}"></i>`).join('')}</div>
+    ${c.map(k => `<div class="dist-row"><span class="dot" style="background:var(--d-${k.k})"></span><span>${k.label}</span><span class="pc">${(k.n / n * 100).toFixed(0)}%</span><span class="ct">${k.n}</span></div>`).join('')}
+    <div class="tiles">${pa.map((v, i) => `<div class="tile"><b>${fx(v, 2)}</b><span>파${i + 3} 평균 타수</span></div>`).join('')}</div>
+    <div class="cap">이글 이하는 버디 이하에 포함됩니다. 라운드당 버디 ${fx(c[0].n / Math.max(scope.length, 1), 2)}개</div></section>`;
+}
+const initial = s => esc(String(s || '?').replace(/^(the|더)\s*/i, '').trim().charAt(0).toUpperCase() || '?');
+function birdieCard(scope) {
+  const rs = scope.map(r => ({ r, b: birdies(r) })).filter(x => x.b > 0).sort((a, b) => b.b - a.b || myTotal(a.r) - myTotal(b.r)).slice(0, 5);
+  return `<details class="st" open><summary><h3>버디를 많이 기록한 라운드</h3></summary>
+    ${rs.length ? rs.map((x, i) => `<button class="rk" data-goto="${x.r.date}"><span class="no">${i + 1}</span><span class="ini">${initial(x.r.club)}</span>
+      <span class="m"><div class="d">${fmtDate(x.r.date)}</div><div class="c">${esc(x.r.club || '골프장 미입력')}</div></span>
+      <span class="r"><div class="s">${myTotal(x.r)}타</div><div class="x">${x.b}회</div></span></button>`).join('') : '<div class="cap">아직 버디 기록이 없습니다.</div>'}</details>`;
+}
+function clubCard(full) {
+  const m = {};
+  full.forEach(r => { const k = r.club || '골프장 미입력'; (m[k] = m[k] || []).push(r); });
+  const rows = Object.entries(m).map(([k, rs]) => ({ k, n: rs.length, a: avg(rs.map(myTotal)), last: rs.map(r => r.date).sort().pop() })).sort((a, b) => a.a - b.a || b.n - a.n);
+  const show = S.clubAll ? rows : rows.slice(0, 5);
+  return `<details class="st" open><summary><h3>평균 스코어가 낮은 골프장 <small>${rows.length}곳</small></h3></summary>
+    ${show.map((r, i) => `<div class="rk" style="grid-template-columns:20px 1fr auto"><span class="no">${i + 1}</span>
+      <span class="m"><div class="c">${esc(r.k)}</div><div class="d">최근 방문일 ${fmtDate(r.last)}</div></span>
+      <span class="r"><div class="s" style="color:var(--accent);font-weight:700">${r.n}회 방문</div><div class="x plain">${fx(r.a)}</div></span></div>`).join('') || '<div class="cap">18홀 기록이 없습니다.</div>'}
+    ${rows.length > 5 ? `<button class="morebtn" id="clubMore">${S.clubAll ? '접기' : `${rows.length - 5}곳 더보기`}</button>` : ''}</details>`;
+}
+function bestCard(full, allFull) {
+  const life = allFull.length ? Math.min(...allFull.map(myTotal)) : null;
+  const rs = full.slice().sort((a, b) => myTotal(a) - myTotal(b) || b.date.localeCompare(a.date)).slice(0, 3);
+  return `<details class="st" open><summary><h3>18홀 베스트 스코어</h3></summary>
+    ${rs.map(r => {
+      const isLife = myTotal(r) === life, others = r.players.filter((p, i) => i !== meIdx(r)).map(p => p.name).filter(Boolean);
+      return `<button class="best ${isLife ? 'life' : ''}" data-goto="${r.date}"><div class="btop"><div>
+        ${isLife ? '<span class="badge">👑 라이프 베스트</span>' : ''}
+        <div class="crs">${esc(r.courses.map(c => c.name).filter(Boolean).join(' / ') || '-')}</div><div class="club">${esc(r.club || '골프장 미입력')}</div></div>
+        <div class="sc">${myTotal(r)}</div></div>
+        <div class="meta">${fmtDate(r.date)}${r.time ? ' · ' + esc(r.time) : ''}${others.length ? `<br>동반자 ${esc(others.join(', '))}` : ''}</div></button>`;
+    }).join('') || '<div class="cap">18홀 기록이 없습니다.</div>'}</details>`;
+}
+
 /* ================= navigation ================= */
 function move(delta) {
+  if (S.view === 'stats') return;
   if (S.view === 'month') { S.cursor = new Date(S.cursor.getFullYear(), S.cursor.getMonth() + delta, 1); }
   else { const d = parseYmd(S.selected); d.setDate(d.getDate() + delta); S.selected = ymd(d); S.cursor = new Date(d.getFullYear(), d.getMonth(), 1); }
   render();
@@ -375,6 +637,9 @@ $('#next').onclick = () => move(1);
 $('#todayBtn').onclick = () => { const t = new Date(); S.selected = ymd(t); S.cursor = new Date(t.getFullYear(), t.getMonth(), 1); render(); };
 $('#viewSeg').onclick = e => { const v = e.target.dataset.v; if (!v) return; S.view = v; saveUi(); render(); };
 $('#main').addEventListener('click', async e => {
+  const yc = e.target.closest('[data-year]'); if (yc) { S.statYear = yc.dataset.year; S.clubAll = false; render(); return; }
+  if (e.target.closest('#clubMore')) { S.clubAll = !S.clubAll; render(); return; }
+  const gt = e.target.closest('[data-goto]'); if (gt) { goDay(gt.dataset.goto); return; }
   const cell = e.target.closest('.cell');
   if (cell) {
     const ds = cell.dataset.date;
