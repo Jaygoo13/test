@@ -253,6 +253,25 @@ table.ed td.t{min-width:40px;text-align:center;font-weight:800;font-size:14px}
 /* empty-state nudge */
 .fab.nudge{animation:pulse 1.6s ease-in-out infinite}
 #installBar.pulse{animation:barGlow 1.6s ease-in-out infinite}
+.fgate{position:fixed;inset:0;z-index:95;background:var(--bg);overflow-y:auto;display:flex;justify-content:center;padding:calc(30px + env(safe-area-inset-top)) 22px calc(30px + env(safe-area-inset-bottom))}
+.fg-box{max-width:400px;width:100%;display:flex;flex-direction:column;align-items:center;text-align:center}
+.fg-icon{width:84px;height:84px;border-radius:22px;background:var(--accent);display:grid;place-items:center;font-size:44px;box-shadow:0 8px 24px rgba(31,111,74,.35);margin:10px 0 18px}
+.fgate h2{margin:0 0 12px;font-size:23px;line-height:1.35;letter-spacing:-.4px}
+.fg-why{color:var(--muted);font-size:15px;line-height:1.55;margin:0 0 18px}
+.fg-main{width:100%;padding:15px;font-size:17px;flex:none}
+.fg-sub{color:var(--muted);font-size:13px;line-height:1.5;margin:12px 0 0}
+.fg-steps{list-style:none;counter-reset:s;padding:0;margin:0;width:100%;text-align:left;background:var(--card);border-radius:14px;padding:4px 14px}
+.fg-steps li{counter-increment:s;display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding:12px 0;border-bottom:1px solid var(--line);font-size:15px}
+.fg-steps li:last-child{border-bottom:0}
+.fg-steps li::before{content:counter(s);flex:none;width:26px;height:26px;border-radius:50%;background:var(--accent);color:var(--accent-text);display:grid;place-items:center;font-weight:800;font-size:14px}
+.fg-steps small{display:block;color:var(--muted);font-size:12px;margin-top:2px}
+.fgate.arrow-bottom .fg-cont{margin-bottom:52px}
+.fg-steps .ic{vertical-align:middle;margin:0 2px;display:inline-grid;place-items:center;width:28px;height:28px;border:1.5px solid var(--line);border-radius:8px;background:var(--bg)}
+.fgate .arrow{pointer-events:none;position:fixed;font-size:42px;color:var(--accent);animation:bob 1s ease-in-out infinite}
+.fg-bk{margin-top:18px;background:var(--warn-soft);border-radius:12px;padding:12px;font-size:13px;line-height:1.5;text-align:left;width:100%}
+.fg-bk .btn{display:block;width:100%;margin-top:8px;background:var(--card)}
+.fg-done{font-size:17px;line-height:1.6;background:var(--accent-soft);border-radius:14px;padding:16px;width:100%}
+.fg-cont{margin-top:auto;padding-top:28px;color:var(--muted);font-size:12px;text-decoration:underline}
 @keyframes barGlow{50%{box-shadow:0 0 0 6px rgba(31,111,74,.25)}}
 .nudge-tip{position:fixed;right:86px;bottom:calc(32px + env(safe-area-inset-bottom));z-index:29;background:var(--text);color:var(--card);font-size:13px;font-weight:700;padding:9px 12px;border-radius:12px;max-width:200px}
 .nudge-tip::after{content:"";position:absolute;right:-6px;top:50%;margin-top:-6px;border:6px solid transparent;border-right:0;border-left-color:var(--text)}
@@ -273,7 +292,7 @@ table.ed td.t{min-width:40px;text-align:center;font-weight:800;font-size:14px}
 .guide li::before{content:counter(s);flex:none;width:26px;height:26px;border-radius:50%;background:var(--accent);color:var(--accent-text);display:grid;place-items:center;font-weight:800;font-size:14px}
 .guide .ic{display:inline-grid;place-items:center;width:28px;height:28px;border:1.5px solid var(--line);border-radius:8px;vertical-align:middle;margin:0 2px;background:var(--bg)}
 .guide .close{width:100%;margin-top:14px}
-.guide .arrow{position:fixed;font-size:42px;color:#fff;text-shadow:0 2px 8px rgba(0,0,0,.5);animation:bob 1s ease-in-out infinite;z-index:71}
+.guide .arrow{pointer-events:none;position:fixed;font-size:42px;color:#fff;text-shadow:0 2px 8px rgba(0,0,0,.5);animation:bob 1s ease-in-out infinite;z-index:71}
 @keyframes bob{50%{transform:translateY(8px)}}
 .csugs{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;align-items:center}
 .csugs .csl{font-size:12px;color:var(--muted);font-weight:600;margin-right:2px}
@@ -1885,7 +1904,8 @@ const INSTALL = (() => {
   const standalone = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
   let deferred = null; // Android/desktop Chrome: the browser's own install prompt
   addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferred = e; showBar(); });
-  addEventListener('appinstalled', () => { deferred = null; showBar(); toast('홈 화면에 추가되었습니다 🎉'); });
+  addEventListener('appinstalled', () => { deferred = null; showBar(); toast('홈 화면에 추가되었습니다 🎉'); if (document.getElementById('forceGate')) drawGate(true); });
+  addEventListener('beforeinstallprompt', () => { if (document.getElementById('forceGate')) drawGate(); });
   function snoozed() { try { return +localStorage.getItem('installSnooze') > Date.now(); } catch (e) { return false; } }
   function showBar() {
     const bar = $('#installBar');
@@ -1931,7 +1951,41 @@ const INSTALL = (() => {
   const gateSkipped = () => { try { return localStorage.getItem('installGateSkip') === '1'; } catch (e) { return false; } };
   // first use in a browser tab: ask to add to home screen before the first scorecard
   const needGate = () => !standalone() && location.protocol.startsWith('http') && !S.rounds.length && !gateSkipped();
-  return { showBar, install, standalone, ios, needGate, skipGate: () => { try { localStorage.setItem('installGateSkip', '1'); } catch (e) {} } };
+  /* mobile browser tab → full-screen "add to home screen to use" (with a small escape link) */
+  const mobile = ios || android;
+  const continued = () => { try { return localStorage.getItem('browserContinue') === '1'; } catch (e) { return false; } };
+  const mustInstall = () => mobile && !standalone() && location.protocol.startsWith('http') && !continued();
+  function drawGate(installed) {
+    let el = document.getElementById('forceGate');
+    if (!el) { el = document.createElement('div'); el.id = 'forceGate'; el.className = 'fgate'; document.body.appendChild(el); }
+    const n = S.rounds.length;
+    let body;
+    if (installed) body = `<div class="fg-done">✅ 설치 완료!<br><b>홈 화면의 ⛳ 골프달력 아이콘</b>으로 열어주세요.</div>`;
+    else if (inApp) body = `<p class="fg-why">카카오톡 같은 앱 안의 브라우저에서는 홈 화면에 추가할 수 없어요.</p>
+      <button class="btn primary fg-main" id="fgGo">${ios ? 'Safari로 열기' : 'Chrome으로 열기'}</button>
+      <p class="fg-sub">안 열리면 화면의 <b>⋯</b> 메뉴 → <b>${ios ? 'Safari로 열기' : '다른 브라우저로 열기'}</b></p>`;
+    else if (ios) body = `<p class="fg-why">아이폰은 홈 화면 앱으로 써야 기록이 안전하게 유지돼요.</p>
+      <ol class="fg-steps">
+        <li><span>${iosChrome ? '주소창 오른쪽' : '화면 아래'}의 공유 버튼 <span class="ic">${SHARE_SVG}</span> 누르기${iosChrome ? '' : '<small>안 보이면 ⋯ 버튼 → 공유</small>'}</span></li>
+        <li><span>목록을 내려 <b>홈 화면에 추가</b></span></li><li><span>오른쪽 위 <b>추가</b></span></li><li><span>홈 화면의 <b>⛳ 아이콘</b>으로 열기</span></li></ol>
+      <div class="arrow" style="${iosChrome ? 'top:calc(6px + env(safe-area-inset-top));right:14px' : 'bottom:calc(6px + env(safe-area-inset-bottom));left:50%;margin-left:-14px'}">${iosChrome ? '⬆︎' : '⬇︎'}</div>`;
+    else body = `<p class="fg-why">홈 화면 앱으로 설치하면 앱처럼 바로 열리고 기록이 안전하게 유지돼요.</p>
+      <button class="btn primary fg-main" id="fgGo">📲 ${deferred ? '설치하기' : '홈 화면에 추가'}</button>
+      ${deferred ? '' : '<p class="fg-sub">설치 창이 안 뜨면 메뉴 <b>⋮</b> → <b>홈 화면에 추가</b> 또는 <b>앱 설치</b></p>'}
+      <p class="fg-sub">설치 후 홈 화면의 <b>⛳ 아이콘</b>으로 열어주세요.</p>`;
+    el.classList.toggle('arrow-bottom', !installed && ios && !iosChrome && !inApp);
+    el.innerHTML = `<div class="fg-box"><div class="fg-icon">⛳</div><h2>홈 화면에 추가해야<br>사용할 수 있어요</h2>${body}
+      ${n ? `<div class="fg-bk">이 브라우저에 기록 <b>${n}건</b>이 있어요. 백업 파일을 받아 설치한 앱의 <b>⚙︎ 설정 → 백업 가져오기</b>로 옮기세요.<button class="btn" id="fgBk">백업 내보내기</button></div>` : ''}
+      <button class="fg-cont" id="fgCont">설치가 안 되나요? 브라우저에서 계속</button></div>`;
+    const go = el.querySelector('#fgGo'); if (go) go.onclick = () => install();
+    const bk = el.querySelector('#fgBk'); if (bk) bk.onclick = () => exportBackup();
+    el.querySelector('#fgCont').onclick = () => {
+      if (!confirm(ios ? '브라우저에서 쓰면 오래 열지 않을 때 기록이 지워질 수 있고, 나중에 홈 화면 앱에서는 보이지 않아요. 계속할까요?' : '브라우저에서 계속 사용할까요?')) return;
+      try { localStorage.setItem('browserContinue', '1'); } catch (e) {}
+      el.remove(); ONBOARD.maybeAuto();
+    };
+  }
+  return { showBar, install, standalone, ios, needGate, mustInstall, drawGate, skipGate: () => { try { localStorage.setItem('installGateSkip', '1'); } catch (e) {} } };
 })();
 
 /* ================= onboarding wizard / help ================= */
@@ -2041,7 +2095,8 @@ function installGate() {
   if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
   if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(() => {});
   INSTALL.showBar();
-  ONBOARD.maybeAuto();
+  if (INSTALL.mustInstall()) INSTALL.drawGate(); // mobile browser tab: install first
+  else ONBOARD.maybeAuto();
 })();
 window.GolfApp = { S, OCR, DB };
 </script>
