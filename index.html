@@ -493,6 +493,7 @@ async function thumbInfo(id) { // { url, video } for grid tiles (video → poste
   return { url: PHOTO_URLS.get(k) || null, video };
 }
 const MAX_VIDEO_SEC = 10;
+const APP_VERSION = '2026.11.10-v8';
 // video poster: a frame near the start, ≤ 480px
 // video length straight from the MP4/MOV header (moov → mvhd); works even when the browser won't preload the video (iPhone Safari)
 async function movDuration(file) {
@@ -1167,8 +1168,10 @@ $('#photoIn').onchange = async e => {
         const pv = await makePoster(f), poster = pv.poster;
         if (!(dur > 0)) dur = pv.dur;
         if (dur > MAX_VIDEO_SEC + 0.5) { tooLong(dur); continue; }
-        if (!(dur > 0)) { // length unreadable: let small files through rather than block
-          if (mb > 60) { toast('영상 길이를 확인할 수 없어 올리지 못했어요. 10초 이내로 잘라서 다시 올려주세요', 4000); continue; }
+        if (!(dur > 0)) { // length unreadable: don't block, only keep a size cap
+          const info = `${f.type || '형식 미상'} · ${mb.toFixed(1)}MB`;
+          if (mb > 150) { toast(`영상 길이를 확인하지 못했고 파일이 커서(${info}) 올리지 못했어요. 10초 이내로 잘라서 올려주세요`, 5000); continue; }
+          toast(`영상 길이는 확인하지 못했지만 올렸어요 (${info})`, 3500);
           dur = 0;
         }
         ED.photos.push({ id: 'vd' + uid(), blob: f, type: 'video', poster, dur, isNew: true });
@@ -1324,6 +1327,7 @@ async function openSettings() {
       • 기기 변경·초기화에 대비해 가끔 <b>백업 내보내기</b>를 해두세요.<br>
       • 이미지 인식은 첫 사용 시 인터넷이 필요합니다(엔진 약 수 MB). 인식 결과는 저장 전에 꼭 확인하세요. 카드 합계와 다르면 빨간색으로 표시됩니다.
     </div>
+    <div style="text-align:center;font-size:12px;color:var(--muted);margin:-4px 0 12px">골력 버전 ${APP_VERSION}</div>
     <div class="box"><div class="set-item"><div style="color:var(--warn)">모든 기록 삭제</div><button class="btn danger" id="stWipe" style="flex:none">삭제</button></div></div>
   </div></div>`;
   $('#stClose').onclick = () => { closeLayer(); render(); };

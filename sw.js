@@ -1,5 +1,5 @@
 // 오프라인 실행용 서비스 워커: 앱 파일과 인식 엔진(CDN)을 기기에 캐시합니다.
-const SHELL_CACHE = 'golfcal-shell-v1';
+const SHELL_CACHE = 'golfcal-shell-v2';
 const CDN_CACHE = 'golfcal-cdn-v1';
 const SHELL = ['./', './index.html', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png'];
 
@@ -16,8 +16,8 @@ self.addEventListener('fetch', e => {
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
   if (url.origin === location.origin) {
-    // 앱 파일: 네트워크 우선(업데이트 반영), 오프라인이면 캐시
-    e.respondWith(fetch(req).then(res => {
+    // 앱 파일: 네트워크 우선 + 브라우저 HTTP 캐시 무시(항상 최신 버전 확인), 오프라인이면 저장해 둔 사본
+    e.respondWith(fetch(req, { cache: 'no-cache' }).then(res => {
       if (res.ok) { const copy = res.clone(); caches.open(SHELL_CACHE).then(c => c.put(req, copy)); }
       return res;
     }).catch(() => caches.match(req, { ignoreSearch: true }).then(r => r || caches.match('./index.html'))));
