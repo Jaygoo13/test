@@ -323,7 +323,8 @@ table.ed td.t{min-width:40px;text-align:center;font-weight:800;font-size:14px}
 .play .sc-tap{animation:scTap 8s infinite}
 @keyframes scTap{0%{opacity:0;left:256px;top:280px}3%{opacity:1;transform:scale(1)}6%{transform:scale(.6)}8%{opacity:1;transform:scale(1);left:256px;top:280px}15%{opacity:1;left:200px;top:196px}20%{transform:scale(1)}22%{transform:scale(.6)}24%{opacity:1;transform:scale(1);left:200px;top:196px}27%,100%{opacity:0;left:200px;top:196px}}
 /* help: phone simulation (add to home screen) */
-.ob-art.tall{flex:1;height:auto;min-height:220px;width:100%;margin:4px 0 14px}
+.ob-art.tall{flex:1 1 0;height:auto;min-height:140px;width:100%;margin:4px 0 14px;overflow:hidden;place-items:start center}
+.ob-art.tall>.mph,.ob-art.tall>.fitbox{transform-origin:top center}
 .mph{flex:none;width:150px;height:284px;border-radius:24px;border:4px solid #0b0d0c;background:#101412;position:relative;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,.3);font-size:7px;color:#e7ece9}
 .mph .scr{position:absolute;inset:0;display:flex;flex-direction:column}
 .mph .sb{display:flex;justify-content:space-between;padding:5px 10px 2px;font-size:7px;font-weight:700;color:#fff}
@@ -2921,8 +2922,8 @@ const ONBOARD = (() => {
   // the phone is drawn at a fixed design size and scaled to fill its slide
   function fitPhone(root) {
     root.querySelectorAll('.mph, .fitbox').forEach(ph => {
-      const art = ph.parentElement, k = Math.min(art.clientHeight / ph.offsetHeight, art.clientWidth / ph.offsetWidth, 1.6);
-      if (k > 0) ph.style.transform = `scale(${k.toFixed(3)})`;
+      const art = ph.parentElement, k = Math.min((art.clientHeight - 8) / ph.offsetHeight, (art.clientWidth - 8) / ph.offsetWidth, 1.6);
+      if (k > 0) ph.style.transform = `translateY(${Math.max(0, (art.clientHeight - ph.offsetHeight * k) / 2).toFixed(1)}px) scale(${k.toFixed(3)})`;
     });
   }
   function open(help = false) {
@@ -2938,6 +2939,9 @@ const ONBOARD = (() => {
     document.body.appendChild(el);
     tapPaths(el); fitPhone(el);
     const onRs = () => fitPhone(el); addEventListener('resize', onRs);
+    // refit whenever an art area changes size (browser toolbars, fonts, rotation)
+    const ro = window.ResizeObserver ? new ResizeObserver(onRs) : null;
+    if (ro) el.querySelectorAll('.ob-art.tall').forEach(a => ro.observe(a));
     const track = el.querySelector('#obTrack'), dots = [...el.querySelectorAll('.ob-dots i')], next = el.querySelector('#obNext');
     let cur = -1;
     const show = i => {
@@ -2949,7 +2953,7 @@ const ONBOARD = (() => {
     };
     const go = i => track.scrollTo({ left: i * track.clientWidth, behavior: 'smooth' });
     track.addEventListener('scroll', () => show(Math.round(track.scrollLeft / Math.max(1, track.clientWidth))), { passive: true });
-    const close = () => { removeEventListener('resize', onRs);
+    const close = () => { removeEventListener('resize', onRs); if (ro) ro.disconnect();
       markSeen(); el.remove(); render(); OCR.warmup();
     };
     next.onclick = () => cur < n - 1 ? go(cur + 1) : close();
