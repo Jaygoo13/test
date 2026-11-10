@@ -176,6 +176,86 @@ table.ed td.t{min-width:40px;text-align:center;font-weight:800;font-size:14px}
 .set-item .d{font-size:12px;color:var(--muted)}
 .set-item button{white-space:nowrap}
 .help{font-size:13px;color:var(--muted);line-height:1.6}
+/* help button, onboarding wizard, empty-state nudge */
+.sub-row{gap:8px}
+.rbtns{display:flex;gap:2px}
+.help-btn{font-size:17px;font-weight:800;width:34px;height:34px;border-radius:50%;border:1.5px solid var(--line);margin-top:2px}
+.ob{position:fixed;inset:0;z-index:90;background:var(--bg);display:flex;flex-direction:column;padding:calc(10px + env(safe-area-inset-top)) 0 calc(14px + env(safe-area-inset-bottom))}
+.ob-top{display:flex;justify-content:space-between;align-items:center;padding:4px 16px}
+.ob-top .step{font-size:13px;color:var(--muted);font-weight:700}
+.ob-top button{color:var(--muted);font-size:15px;padding:8px}
+.ob-track{flex:1;display:flex;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.ob-track::-webkit-scrollbar{display:none}
+.ob-slide{flex:0 0 100%;scroll-snap-align:center;display:flex;flex-direction:column;align-items:center;padding:8px 24px;overflow-y:auto}
+.ob-art{width:min(300px,82vw);height:min(260px,36vh);margin:8px 0 18px;position:relative;display:grid;place-items:center}
+.ob-slide h2{margin:0 0 10px;font-size:22px;text-align:center;letter-spacing:-.4px}
+.ob-slide p{margin:0 0 8px;font-size:15px;color:var(--muted);text-align:center;line-height:1.55;max-width:340px}
+.ob-slide p b{color:var(--text)}
+.ob-dots{display:flex;gap:6px;justify-content:center;margin:6px 0 12px}
+.ob-dots i{width:7px;height:7px;border-radius:4px;background:var(--line);transition:all .25s}
+.ob-dots i.on{width:20px;background:var(--accent)}
+.ob-nav{padding:0 20px}
+.ob-nav .btn{width:100%;padding:14px;font-size:16px}
+.ob-faq{width:100%;max-width:380px;text-align:left}
+.ob-faq details{background:var(--card);border-radius:12px;padding:12px 14px;margin-bottom:8px}
+.ob-faq summary{font-weight:700;font-size:15px;cursor:pointer}
+.ob-faq details p{text-align:left;margin:8px 0 0;font-size:14px}
+/* mock screens */
+.mk{background:var(--card);border-radius:18px;box-shadow:0 6px 24px rgba(0,0,0,.12);border:1px solid var(--line);padding:12px;width:100%;height:100%;position:relative;overflow:hidden}
+.mk-cal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;height:100%}
+.mk-cal i{background:var(--bg);border-radius:6px;font-style:normal;font-size:9px;color:var(--muted);padding:3px;display:flex;flex-direction:column;align-items:center}
+.mk-cal i b{font-size:14px;color:var(--accent);margin-top:auto;opacity:0;transform:scale(.4)}
+.mk-cal i.hit{background:var(--accent-soft)}
+.play .mk-cal i b{animation:pop .5s cubic-bezier(.2,1.6,.4,1) forwards}
+.play .mk-cal i:nth-child(10) b{animation-delay:.5s}.play .mk-cal i:nth-child(18) b{animation-delay:.9s}.play .mk-cal i:nth-child(26) b{animation-delay:1.3s}
+@keyframes pop{to{opacity:1;transform:scale(1)}}
+.mk-lock{position:absolute;right:10px;bottom:10px;background:var(--text);color:var(--card);font-size:11px;font-weight:700;border-radius:999px;padding:5px 10px}
+.mk-home{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;padding:10px 6px;height:100%;align-content:start;background:linear-gradient(160deg,#3a7bd5,#6dd5ed)}
+.mk-home i{aspect-ratio:1;border-radius:14px;background:rgba(255,255,255,.55)}
+.mk-home i.app{background:var(--accent);display:grid;place-items:center;font-style:normal;font-size:24px;opacity:0;transform:translateY(-30px) scale(.6)}
+.play .mk-home i.app{animation:drop .7s .6s cubic-bezier(.2,1.4,.4,1) forwards}
+@keyframes drop{to{opacity:1;transform:none}}
+.mk-share{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);background:#fff;color:#007aff;border-radius:12px;padding:6px 12px;font-size:12px;font-weight:700;display:flex;gap:6px;align-items:center;box-shadow:0 2px 8px rgba(0,0,0,.2)}
+.play .mk-share{animation:tap 1.6s .2s ease-in-out 2}
+@keyframes tap{50%{transform:translateX(-50%) scale(.9)}}
+.mk-fab{position:absolute;right:16px;bottom:16px;width:48px;height:48px;border-radius:50%;background:var(--accent);color:var(--accent-text);font-size:28px;display:grid;place-items:center;box-shadow:0 4px 12px rgba(0,0,0,.25)}
+.play .mk-fab{animation:pulse 1.2s ease-in-out 3}
+@keyframes pulse{50%{transform:scale(1.15);box-shadow:0 0 0 12px rgba(31,111,74,.15)}}
+.mk-photo{position:absolute;width:62px;height:80px;border-radius:6px;background:#fff;border:1px solid #ddd;box-shadow:0 3px 10px rgba(0,0,0,.15);top:22px;display:grid;gap:3px;padding:6px;align-content:start;opacity:0}
+.mk-photo::before,.mk-photo::after{content:"";height:8px;background:#2d63a3;border-radius:2px}
+.mk-photo::after{height:30px;background:repeating-linear-gradient(#eee 0 6px,#fff 6px 9px)}
+.play .mk-photo{animation:fly 1.4s ease-out forwards}
+.mk-photo.p1{left:30px}.mk-photo.p2{left:70px;animation-delay:.25s!important}.mk-photo.p3{left:110px;animation-delay:.5s!important}
+@keyframes fly{0%{opacity:0;transform:translate(120px,110px) scale(.3)}60%{opacity:1}100%{opacity:1;transform:none}}
+.mk-scan{position:absolute;left:24px;right:24px;top:22px;height:3px;background:var(--accent);opacity:0;border-radius:2px}
+.play .mk-scan{animation:scan 1.2s 1.6s ease-in-out 2}
+@keyframes scan{0%{opacity:1;transform:translateY(0)}100%{opacity:0;transform:translateY(80px)}}
+.mk-tbl{display:grid;gap:5px;font-size:11px}
+.mk-tbl div{display:grid;grid-template-columns:48px repeat(5,1fr) 40px;gap:3px;align-items:center}
+.mk-tbl span{background:var(--bg);border-radius:4px;text-align:center;padding:3px 0}
+.mk-tbl .h span{background:var(--blue);color:#fff}
+.mk-tbl em{font-style:normal;font-weight:800;font-size:10px;color:var(--ok);opacity:0}
+.play .mk-tbl em{animation:pop .4s forwards}
+.play .mk-tbl div:nth-child(3) em{animation-delay:.4s}.play .mk-tbl div:nth-child(4) em{animation-delay:.7s}.play .mk-tbl div:nth-child(5) em{animation-delay:1s}
+.mk-chips{display:flex;gap:5px;margin:4px 0 10px;flex-wrap:wrap}
+.mk-chips span{border:1px solid var(--accent);color:var(--accent);background:var(--accent-soft);border-radius:999px;font-size:10px;font-weight:700;padding:3px 8px}
+.mk-seg{display:flex;background:var(--line);border-radius:10px;padding:3px;position:relative;margin-bottom:10px}
+.mk-seg span{flex:1;text-align:center;font-size:12px;font-weight:700;color:var(--muted);padding:6px 0;z-index:1}
+.mk-seg i{position:absolute;top:3px;bottom:3px;left:3px;width:calc((100% - 6px)/3);background:var(--card);border-radius:8px}
+.play .mk-seg i{animation:seg 3.6s ease-in-out infinite}
+@keyframes seg{0%,25%{transform:translateX(0)}33%,58%{transform:translateX(100%)}66%,92%{transform:translateX(200%)}100%{transform:translateX(0)}}
+.mk-bars{display:flex;align-items:flex-end;gap:8px;height:110px;padding:0 6px}
+.mk-bars i{flex:1;background:var(--accent);border-radius:6px 6px 3px 3px;transform-origin:bottom;transform:scaleY(.05)}
+.play .mk-bars i{animation:grow .8s ease-out forwards}
+.mk-bars i:nth-child(2){animation-delay:.15s!important}.mk-bars i:nth-child(3){animation-delay:.3s!important}.mk-bars i:nth-child(4){animation-delay:.45s!important}
+@keyframes grow{to{transform:scaleY(1)}}
+.mk-gear{position:absolute;right:12px;bottom:10px;font-size:12px;font-weight:700;background:var(--accent-soft);color:var(--accent);border-radius:999px;padding:4px 10px}
+/* empty-state nudge */
+.fab.nudge{animation:pulse 1.6s ease-in-out infinite}
+.nudge-tip{position:fixed;right:86px;bottom:calc(32px + env(safe-area-inset-bottom));z-index:29;background:var(--text);color:var(--card);font-size:13px;font-weight:700;padding:9px 12px;border-radius:12px;max-width:200px}
+.nudge-tip::after{content:"";position:absolute;right:-6px;top:50%;margin-top:-6px;border:6px solid transparent;border-right:0;border-left-color:var(--text)}
+@media (prefers-reduced-motion: reduce){.play *, .fab.nudge{animation:none!important}.mk-cal i b,.mk-home i.app,.mk-photo,.mk-tbl em{opacity:1!important;transform:none!important}.mk-bars i{transform:none}}
+
 /* install (add to home screen) */
 #installBar{margin:12px 16px 0;background:var(--accent);color:var(--accent-text);border-radius:14px;padding:12px 14px;display:flex;align-items:center;gap:10px;box-shadow:var(--shadow)}
 #installBar .t{flex:1;font-size:13px;line-height:1.35}
@@ -290,10 +370,10 @@ details.st[open] > summary h3::after{content:"⌃"}
   </div>
   <div class="sub-row">
     <button class="pill" id="todayBtn">오늘</button>
-    <div class="seg" style="margin:0;width:200px" id="viewSeg">
+    <div class="seg" style="margin:0;flex:1;max-width:200px" id="viewSeg">
       <button data-v="month">월간</button><button data-v="day">일간</button><button data-v="stats">통계</button>
     </div>
-    <button class="icon-btn" id="settingsBtn" aria-label="설정"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
+    <div class="rbtns"><button class="icon-btn help-btn" id="helpBtn" aria-label="도움말">?</button><button class="icon-btn" id="settingsBtn" aria-label="설정"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button></div>
   </div>
 </header>
 <div id="installBar" class="hidden"></div>
@@ -468,6 +548,7 @@ function render() {
   const st = S.view === 'stats';
   ['#prev', '#next', '#todayBtn'].forEach(q => $(q).style.visibility = st ? 'hidden' : '');
   if (S.view === 'month') renderMonth(); else if (st) renderStats(); else renderDay();
+  if (typeof updateNudge === 'function') updateNudge();
 }
 function renderMonth() {
   const y = S.cursor.getFullYear(), m = S.cursor.getMonth();
@@ -1847,6 +1928,88 @@ const INSTALL = (() => {
   return { showBar, install, standalone };
 })();
 
+/* ================= onboarding wizard / help ================= */
+const ONBOARD = (() => {
+  const KEY = 'onboarded-v1';
+  const seen = () => { try { return localStorage.getItem(KEY) === '1'; } catch (e) { return false; } };
+  const markSeen = () => { try { localStorage.setItem(KEY, '1'); } catch (e) {} DB.set('onboarded', 1).catch(() => {}); };
+  const ua = navigator.userAgent, ios = /iPhone|iPad|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const cal = () => '<div class="mk"><div class="mk-cal">' + Array.from({ length: 28 }, (_, i) => {
+    const s = { 9: 82, 17: 86, 25: 79 }[i];
+    return `<i class="${s ? 'hit' : ''}">${i + 1}${s ? `<b>${s}</b>` : ''}</i>`;
+  }).join('') + '</div><span class="mk-lock">🔒 내 폰에만 저장</span></div>';
+  const home = () => `<div class="mk" style="padding:0"><div class="mk-home">${'<i></i>'.repeat(6)}<i class="app">⛳</i>${'<i></i>'.repeat(5)}</div>
+    <span class="mk-share">${ios ? `${SHARE_SVG} 공유 → 홈 화면에 추가` : '⋮ → 앱 설치'}</span></div>`;
+  const scan = () => `<div class="mk"><span class="mk-photo p1"></span><span class="mk-photo p2"></span><span class="mk-photo p3"></span><span class="mk-scan"></span><span class="mk-fab">＋</span></div>`;
+  const check = () => `<div class="mk"><div style="font-size:11px;font-weight:700;color:var(--muted)">골프장</div><div class="mk-chips"><span>벨라스톤 CC</span><span>모나크 CC</span><span>골드 CC</span></div>
+    <div class="mk-tbl"><div class="h"><span>홀</span><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>합</span></div>
+    <div><span>나</span><span>0</span><span>1</span><span>0</span><span>2</span><span>-1</span><em>45 ✓</em></div>
+    <div><span>동반자</span><span>1</span><span>0</span><span>0</span><span>1</span><span>0</span><em>40 ✓</em></div>
+    <div><span>동반자</span><span>0</span><span>2</span><span>1</span><span>0</span><span>1</span><em>48 ✓</em></div></div></div>`;
+  const views = () => `<div class="mk"><div class="mk-seg"><i></i><span>월간</span><span>일간</span><span>통계</span></div>
+    <div class="mk-bars" style="height:96px"><i style="height:30%"></i><i style="height:85%"></i><i style="height:60%"></i><i style="height:40%"></i></div><span class="mk-gear">⚙︎ 백업</span></div>`;
+  const slides = help => [
+    { art: cal, h: '스코어카드 사진만 넣으면<br>달력에 기록돼요', p: ['골프장·티업 시간·내 타수·동반자 타수가 날짜별로 정리됩니다.', '기록은 서버가 아니라 <b>내 폰에만</b> 저장돼요.'] },
+    { art: home, h: '홈 화면에 추가하세요', p: [INSTALL.standalone() ? '✓ 이미 홈 화면 앱으로 실행 중이에요.' : ios ? '<b>공유 버튼 → 홈 화면에 추가 → 추가</b><br>앱처럼 실행되고 기록이 오래 유지돼요.' : '아래 버튼을 누르면 <b>설치 창</b>이 떠요.<br>앱처럼 실행되고 기록이 오래 유지돼요.'], install: !INSTALL.standalone() },
+    { art: scan, h: '＋ 버튼으로 사진 추가', p: ['오른쪽 아래 <b>＋</b> → <b>스코어카드 이미지로 추가</b>', '여러 장을 한 번에 골라도 돼요. 날짜·홀별 타수를 자동으로 읽어요.'] },
+    { art: check, h: '확인하고 저장', p: ['카드 합계와 맞으면 <b>✓</b>, 다르면 빨간색으로 알려줘요.', '골프장은 <b>후보 버튼</b>을 누르거나 입력하고, 틀린 칸만 고친 뒤 저장하세요.'] },
+    { art: views, h: '기록 보기와 백업', p: ['<b>월간·일간·통계</b>로 나의 골프 기록을 확인하세요.', '폰을 바꿀 때를 대비해 <b>⚙︎ 설정 → 백업 내보내기</b>를 가끔 해두세요.'] },
+    ...(help ? [{ faq: true }] : []),
+  ];
+  const FAQ = [
+    ['데이터는 어디에 저장되나요?', '이 기기의 브라우저 저장소에만 저장됩니다. 같은 주소를 쓰는 다른 사람에게 보이지 않아요.'],
+    ['폰을 바꾸면요?', '기존 폰에서 ⚙︎ 설정 → 백업 내보내기, 새 폰에서 백업 가져오기를 하면 그대로 옮겨져요.'],
+    ['인식이 틀렸어요', '저장 전 화면에서 틀린 칸을 눌러 고치면 돼요. 저장 후에도 일간 화면의 편집으로 고칠 수 있어요.'],
+    ['골프장 이름이 이상해요', '한 번 고쳐 저장하면 같은 카드·코스는 다음부터 자동으로 그 이름이 들어가요.'],
+    ['아이폰에서 기록이 사라졌어요', '홈 화면에 추가하지 않고 Safari에서만 쓰면 오래 안 열 때 지워질 수 있어요. 홈 화면 앱으로 쓰고 가끔 백업하세요.'],
+  ];
+  function open(help = false) {
+    const list = slides(help), n = list.length;
+    const el = document.createElement('div'); el.className = 'ob';
+    el.innerHTML = `<div class="ob-top"><span class="step" id="obStep"></span><button id="obSkip">${help ? '닫기' : '건너뛰기'}</button></div>
+      <div class="ob-track" id="obTrack">${list.map((s, i) => s.faq
+        ? `<section class="ob-slide"><h2 style="margin-top:12px">자주 묻는 질문</h2><div class="ob-faq">${FAQ.map(([q, a]) => `<details><summary>${q}</summary><p>${a}</p></details>`).join('')}</div></section>`
+        : `<section class="ob-slide" data-i="${i}"><div class="ob-art">${s.art()}</div><h2>${s.h}</h2>${s.p.map(t => `<p>${t}</p>`).join('')}
+            ${s.install ? `<button class="btn primary" id="obInstall" style="flex:none;margin-top:8px;padding:12px 22px">📲 홈 화면에 추가</button>` : ''}</section>`).join('')}</div>
+      <div class="ob-dots">${list.map(() => '<i></i>').join('')}</div>
+      <div class="ob-nav"><button class="btn primary" id="obNext"></button></div>`;
+    document.body.appendChild(el);
+    const track = el.querySelector('#obTrack'), dots = [...el.querySelectorAll('.ob-dots i')], next = el.querySelector('#obNext');
+    let cur = -1;
+    const show = i => {
+      if (i === cur) return; cur = i;
+      dots.forEach((d, k) => d.classList.toggle('on', k === i));
+      el.querySelector('#obStep').textContent = `${i + 1} / ${n}`;
+      next.textContent = i === n - 1 ? (help ? '닫기' : '시작하기') : '다음';
+      track.querySelectorAll('.ob-slide').forEach((s, k) => { s.classList.remove('play'); if (k === i) { void s.offsetWidth; s.classList.add('play'); } });
+    };
+    const go = i => track.scrollTo({ left: i * track.clientWidth, behavior: 'smooth' });
+    track.addEventListener('scroll', () => show(Math.round(track.scrollLeft / Math.max(1, track.clientWidth))), { passive: true });
+    const close = () => { markSeen(); el.remove(); render(); };
+    next.onclick = () => cur < n - 1 ? go(cur + 1) : close();
+    el.querySelector('#obSkip').onclick = close;
+    const ib = el.querySelector('#obInstall'); if (ib) ib.onclick = () => INSTALL.install();
+    show(0);
+  }
+  async function maybeAuto() {
+    if (seen()) return;
+    let flag = null; try { flag = await DB.get('onboarded'); } catch (e) {}
+    if (flag) { try { localStorage.setItem(KEY, '1'); } catch (e) {} return; }
+    if (S.rounds.length) { markSeen(); return; } // existing users with records: don't interrupt
+    open(false);
+  }
+  return { open, maybeAuto };
+})();
+$('#helpBtn').onclick = () => ONBOARD.open(true);
+// empty-state nudge on the ＋ button
+function updateNudge() {
+  const empty = !S.rounds.length && S.view !== 'stats';
+  $('#fab').classList.toggle('nudge', empty);
+  let tip = document.getElementById('nudgeTip');
+  if (empty && !tip) { tip = document.createElement('div'); tip.id = 'nudgeTip'; tip.className = 'nudge-tip'; tip.textContent = '여기를 눌러 첫 스코어카드를 추가하세요'; document.body.appendChild(tip); tip.onclick = () => openAddMenu(); }
+  if (!empty && tip) tip.remove();
+}
+
 /* ================= boot ================= */
 (async () => {
   await loadAll();
@@ -1854,6 +2017,7 @@ const INSTALL = (() => {
   if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
   if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(() => {});
   INSTALL.showBar();
+  ONBOARD.maybeAuto();
 })();
 window.GolfApp = { S, OCR, DB };
 </script>
