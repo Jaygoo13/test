@@ -2835,13 +2835,13 @@ const ONBOARD = (() => {
     const tot = ppl.map(([, sc]) => par.reduce((a, b) => a + b, 0) + sc.reduce((a, b) => a + b, 0));
     const row = (n, v, c, t) => `<span class="n ${c || ''}">${n}</span>${v.map(x => `<span class="${c || ''} ${x < 0 ? 'b' : ''}">${x < 0 ? `<em>${x}</em>` : x}</span>`).join('')}<span class="${c || ''}">${t}</span>`;
     return `<div class="ss ${cls}"><div class="ss-top"><span class="ss-logo">${logo}<small>${sub}</small></span>
-      <span class="ss-meta"><div><b>DATE</b>${date}</div><div><b>TEE OFF</b>${tee}</div><div class="nm">구자윤 &nbsp;${hdr}</div></span></div>
+      <span class="ss-meta"><div><b>DATE</b>${date}</div><div><b>TEE OFF</b>${tee}</div><div class="nm">홍길동 &nbsp;${hdr}</div></span></div>
       <div class="ss-t">${row(crs, [1, 2, 3, 4, 5, 6, 7, 8, 9], 'h', 'T')}${row('PAR', par, 'p', 36)}${ppl.map(([n, sc], k) => row(n, sc, '', tot[k])).join('')}</div></div>`;
   };
   const scan = () => `<div class="sc fitbox"><div class="sc-bg">${'<i></i>'.repeat(28)}</div>
-    ${ssCard('c1', 'Gold', 'COUNTRY CLUB', '2026/10/11', 'PM 01:20', 86, '챔피언', [4, 4, 3, 5, 4, 4, 3, 5, 4], [['구자윤', [1, 0, 1, 2, 0, 1, 0, 1, 1]], ['김**', [2, 1, 0, 1, 1, 2, 0, 1, 1]], ['정**', [1, 1, 1, 0, 2, 1, 1, 0, 2]], ['장**', [2, 2, 1, 1, 0, 2, 1, 1, 1]]])}
-    ${ssCard('c2', 'Monarch', 'COUNTRY CLUB', '2026/10/18', 'AM 08:35', 79, '레이크', [5, 4, 3, 4, 4, 5, 3, 4, 4], [['구자윤', [0, 1, 0, -1, 1, 0, 1, 0, 1]], ['박**', [1, 0, 2, 1, 0, 1, 1, 2, 0]], ['홍**', [2, 1, 0, 1, 1, 2, 0, 1, 1]], ['이**', [1, 1, 1, 0, 2, 1, 1, 1, 0]]])}
-    ${ssCard('c3', 'Bella Stone', 'GOLF &amp; RESORT', '2026/10/03', 'AM 07:59', 82, '스톤', [5, 4, 4, 3, 4, 5, 3, 4, 4], [['구자윤', [0, 1, 2, 0, 1, 0, 1, -1, 0]], ['박**', [0, 0, 0, 0, 2, 1, 0, 0, 1]], ['홍**', [0, 1, 2, 2, 2, 2, 2, 1, 0]], ['이**', [0, 2, 1, 1, 2, 1, 1, 1, 1]]])}
+    ${ssCard('c1', 'Gold', 'COUNTRY CLUB', '2026/10/11', 'PM 01:20', 86, '챔피언', [4, 4, 3, 5, 4, 4, 3, 5, 4], [['홍길동', [1, 0, 1, 2, 0, 1, 0, 1, 1]], ['김**', [2, 1, 0, 1, 1, 2, 0, 1, 1]], ['정**', [1, 1, 1, 0, 2, 1, 1, 0, 2]], ['장**', [2, 2, 1, 1, 0, 2, 1, 1, 1]]])}
+    ${ssCard('c2', 'Monarch', 'COUNTRY CLUB', '2026/10/18', 'AM 08:35', 79, '레이크', [5, 4, 3, 4, 4, 5, 3, 4, 4], [['홍길동', [0, 1, 0, -1, 1, 0, 1, 0, 1]], ['박**', [1, 0, 2, 1, 0, 1, 1, 2, 0]], ['최**', [2, 1, 0, 1, 1, 2, 0, 1, 1]], ['이**', [1, 1, 1, 0, 2, 1, 1, 1, 0]]])}
+    ${ssCard('c3', 'Bella Stone', 'GOLF &amp; RESORT', '2026/10/03', 'AM 07:59', 82, '스톤', [5, 4, 4, 3, 4, 5, 3, 4, 4], [['홍길동', [0, 1, 2, 0, 1, 0, 1, -1, 0]], ['박**', [0, 0, 0, 0, 2, 1, 0, 0, 1]], ['최**', [0, 1, 2, 2, 2, 2, 2, 1, 0]], ['이**', [0, 2, 1, 1, 2, 1, 1, 1, 1]]])}
     <span class="sc-line"></span><span class="sc-ok">✓ 3장 인식 · 날짜·타수 자동 입력</span>
     <div class="sc-menu"><div class="go">📷 스코어카드 이미지로 추가</div><div>✏️ 직접 입력</div></div><span class="mk-fab">＋</span><span class="sc-tap"></span></div>`;
   const check = () => `<div class="mk"><div style="font-size:11px;font-weight:700;color:var(--muted)">골프장</div><div class="mk-chips"><span>벨라스톤 CC</span><span>모나크 CC</span><span>골드 CC</span></div>
