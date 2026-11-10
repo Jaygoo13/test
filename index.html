@@ -494,7 +494,7 @@ async function thumbInfo(id) { // { url, video } for grid tiles (video → poste
   return { url: PHOTO_URLS.get(k) || null, video };
 }
 const MAX_VIDEO_SEC = 10;
-const APP_VERSION = '2026.11.10-v14';
+const APP_VERSION = '2026.11.11-v16';
 // video poster: a frame near the start, ≤ 480px
 // video length straight from the MP4/MOV header (moov → mvhd); works even when the browser won't preload the video (iPhone Safari)
 async function movDuration(file) {
@@ -631,7 +631,7 @@ function matchClubs(cands) {
   (cands || []).forEach((c, ci) => {
     if (c.kind === 'ko') {
       const k = clubCore(c.text.replace(/[^가-힣A-Za-z0-9]/g, '')); if (k.length < 2) return;
-      if (k.length >= 3 || /CC|GC|컨트리|골프|클럽/i.test(c.text)) strongC.add(ci);
+      if (k.length >= 3 || /CC|GC|컨트리|골프|클럽/i.test(c.text) || CLUB_IDX.filter(e => e.core.includes(k)).length === 1) strongC.add(ci); // "감곡" → only 감곡 CC
       for (const e of CLUB_IDX) {
         let sc = k === e.core ? 1 : similarity(k, e.core);
         if (sc < 0.9 && k.length >= 2 && e.core.includes(k)) sc = Math.max(sc, 0.72 + 0.25 * k.length / e.core.length);
@@ -2047,7 +2047,7 @@ const OCR = (() => {
     for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
       const i = y * W + x, l = L[i], M = box(x, y, 25);
       // dark text: darker than the wide background AND than its own 13×13 neighbourhood (thin stroke, not a dark box fill)
-      const dark = l < M - 35 && (l < 120 || SA[i] < 40) && l < box(x, y, 6) - 15; // grey or truly dark; a coloured fill (blue header) is never ink
+      const dark = l < M - 35 && (l < 120 || SA[i] < 40 || M > 200) && l < box(x, y, 6) - 15; // grey/dark, or coloured type on a light page — never a coloured fill
       // light stroke on a dark/colour fill (not white paper beside a dark box); thin white type on a strong colour fill gets a lower bar
       const colourFill = boxS(x, y, 12) > 70;
       const light = M < (colourFill ? 190 : 170) && l > box(x, y, 6) + 15 && l > M + (colourFill ? 35 : 50);
@@ -2094,7 +2094,14 @@ const OCR = (() => {
         b = { y0: b.y0 + a, y1: b.y0 + z };
       }
       const col = new Uint16Array(W);
-      for (let y = b.y0; y <= b.y1; y++) for (let x = 0; x < W; x++) col[x] += ink[y * W + x];
+      for (let y = b.y0; y <= b.y1; y++) { // count ink per column, skipping long horizontal runs (cell frames joining the numbers)
+        for (let x = 0; x < W;) {
+          if (!ink[y * W + x]) { x++; continue; }
+          let e = x; while (e < W && ink[y * W + e]) e++;
+          if (e - x <= 40) for (let k = x; k < e; k++) col[k]++;
+          x = e;
+        }
+      }
       const blobs = []; let cur = null;
       for (let x = 0; x < W; x++) if (col[x] >= 3) { if (cur && x - cur.x1 <= 10) cur.x1 = x; else { cur = { x0: x, x1: x }; blobs.push(cur); } } // ≥3: skip 1–2px rule fragments
       blobs.forEach(o => o.c = (o.x0 + o.x1) / 2);
@@ -2133,7 +2140,9 @@ const OCR = (() => {
       const pitch = median(sl); if (!(pitch > G.W * 0.035)) continue;
       const a = median(f.map(p => p.x - pitch * p.k));
       if (f.filter(p => Math.abs(a + pitch * p.k - p.x) < pitch * 0.3).length < 4) continue; // thin fonts: 4 well-placed hole numbers are enough
-      return { centers: Array.from({ length: 9 }, (_, i) => a + pitch * (i + 1)), pitch, start };
+      const centers = Array.from({ length: 9 }, (_, i) => a + pitch * (i + 1));
+      if (centers.filter(cx => b.blobs.some(o => Math.abs(o.c - cx) < pitch * 0.3)).length < 7) continue; // the 9 columns must really be there
+      return { centers, pitch, start };
     }
     return null;
   }
@@ -2146,13 +2155,38 @@ const OCR = (() => {
     const cc = cellCanvas(G, x0, x1, y0, y1, false); if (!cc) return 0;
     const { data } = await txtW.recognize(cc.canvas); return data.confidence || 0;
   }
+  const COURSE_WORDS = ['Mountain', 'Valley', 'Lake', 'Hill', 'East', 'West', 'South', 'North', 'Sky', 'Ocean', 'Forest', 'Palace', 'Castle', 'Garden', 'Star', 'Sun', 'Moon', 'Grand', 'Classic', 'Romantic', 'Pine', 'Rock', 'River', 'Park', 'Champion', 'Masters', 'Royal', 'Crystal', 'Glen', 'Peach', 'Stone', 'Bella', 'Nature', 'Dream', 'Vista', 'Island', 'Ridge', 'Creek', 'Meadow', 'Canyon'];
+  const snapWord = w => { if (w.length < 4) return w; let best = w, bs = 0; for (const c of COURSE_WORDS) { const sc = similarity(w.toLowerCase(), c.toLowerCase()); if (sc > bs) { bs = sc; best = c; } } return bs >= 0.75 ? (w === w.toUpperCase() ? best.toUpperCase() : best) : w; };
   async function courseName(G, x0, x1, y0, y1) { // Latin ("LAKE", "Mountain") or Korean ("스톤", "챔피언IN")
-    const e = await engLine(G, x0, x1, y0, y1);
-    const latin = e.text.replace(/코스|course/gi, '').replace(/[^A-Za-z0-9 ]/g, ' ').split(/\s+/).filter((w, i) => w.length >= 3 || (i > 0 && SUFFIXES.includes(w.toUpperCase()))).join(' ').trim();
-    if ((latin.match(/[A-Za-z]/g) || []).length >= 3 && e.conf >= 60 && /^[A-Z][A-Za-z]+( [A-Za-z0-9]+)*$/.test(latin)) return latin;
-    return (await readText(G, x0, x1, y0, y1, false)).replace(/코스$/, '');
+    let e = await engLine(G, x0, x1, y0, y1);
+    const cc = colorCanvas(G, x0, x1, y0 - 4, y1 + 4); // white-on-dark titles read better from the colour image
+    if (cc) {
+      const { data } = await lineW.recognize(cc), t = (data.text || '').trim();
+      if ((data.confidence || 0) > e.conf && /^[^A-Za-z]*[A-Z][A-Za-z]{2,}([ -][A-Za-z0-9]+)*[^A-Za-z]*$/.test(t)) e = { text: t, conf: data.confidence || 0 };
+    }
+    const latin = e.text.replace(/코스|course/gi, '').replace(/[^A-Za-z0-9 \-]/g, ' ').replace(/\s*-\s*/g, '-').split(/\s+/).filter((w, i) => w.length >= 3 || (i > 0 && SUFFIXES.includes(w.toUpperCase()))).join(' ').trim();
+    const okLatin = (latin.match(/[A-Za-z]/g) || []).length >= 3 && /^[A-Z][A-Za-z]+([ -][A-Za-z0-9]+)*$/.test(latin);
+    const fixLatin = () => latin.split(/([ -])/).map(snapWord).join(''); // "Wiountain" → "Mountain"
+    if (okLatin && e.conf >= 60) return fixLatin();
+    const ko = (await readText(G, x0, x1, y0, y1, false)).replace(/코스$/, '');
+    if (okLatin && e.conf >= 20 && !/[가-힣]/.test(ko)) return fixLatin(); // no Korean either: trust the English reading
+    return ko;
   }
   // faint/thin digits (e.g. light-grey PAR row): read from the colour image, enlarged and contrast-stretched
+  function colorCanvas(G, x0, x1, y0, y1) { // colour crop → contrast-stretched black-on-white, enlarged
+    x0 = Math.max(0, Math.round(x0)); y0 = Math.max(0, Math.round(y0)); x1 = Math.min(G.W, Math.round(x1)); y1 = Math.min(G.H, Math.round(y1));
+    const w = x1 - x0, h = y1 - y0; if (w < 4 || h < 4) return null;
+    const src = G.color.getContext('2d', { willReadFrequently: true }).getImageData(x0, y0, w, h), d = src.data;
+    let lo = 255, hi = 0; const L = new Uint8Array(w * h);
+    for (let i = 0; i < w * h; i++) { const l = (d[i * 4] * 299 + d[i * 4 + 1] * 587 + d[i * 4 + 2] * 114) / 1000; L[i] = l; if (l < lo) lo = l; if (l > hi) hi = l; }
+    if (hi - lo < 25) return null;
+    const mid = lo + (hi - lo) * 0.55, bgLight = L.reduce((a, b) => a + (b > mid ? 1 : 0), 0) > w * h / 2;
+    for (let i = 0; i < w * h; i++) { const on = bgLight ? L[i] < mid : L[i] > mid; d[i * 4] = d[i * 4 + 1] = d[i * 4 + 2] = on ? 0 : 255; d[i * 4 + 3] = 255; }
+    const t = document.createElement('canvas'); t.width = w; t.height = h; t.getContext('2d').putImageData(src, 0, 0);
+    const k = Math.max(2, Math.min(6, 60 / h)), c = document.createElement('canvas'); c.width = Math.round(w * k) + 40; c.height = Math.round(h * k) + 40;
+    const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height); x.imageSmoothingEnabled = true; x.drawImage(t, 20, 20, Math.round(w * k), Math.round(h * k));
+    return c;
+  }
   async function readNumColor(G, x0, x1, y0, y1) {
     x0 = Math.max(0, Math.round(x0)); y0 = Math.max(0, Math.round(y0)); x1 = Math.min(G.W, Math.round(x1)); y1 = Math.min(G.H, Math.round(y1));
     const w = x1 - x0, h = y1 - y0; if (w < 4 || h < 4) return { v: null };
@@ -2173,6 +2207,10 @@ const OCR = (() => {
     const G = prepGeneric(img), bands = bandsOf(G);
     const secs = []; let cur = null;
     bands.forEach((b, i) => b.prev = bands[i - 1] || null);
+    { // background shade of each band (a dark header right under white rows marks a new table even without a gap)
+      const cd = G.color.getContext('2d', { willReadFrequently: true }).getImageData(0, 0, G.W, G.H).data;
+      for (const b of bands) { let s0 = 0, n = 0; for (let y = b.y0; y <= b.y1; y += 2) for (let x = Math.round(G.W * 0.05); x < G.W * 0.95; x += 6) { const k = (y * G.W + x) * 4; s0 += (cd[k] * 299 + cd[k + 1] * 587 + cd[k + 2] * 114) / 1000; n++; } b.shade = n ? s0 / n : 255; }
+    }
     const cand = bands.filter(b => hasRun(b.blobs, G.W));
     let done = 0; const est = cand.length + bands.length * 4;
     const tick = n => progress(`표 구조 분석 중… ${Math.min(99, Math.round((done += n) / est * 100))}%`, 0.2 + 0.75 * Math.min(1, done / est));
@@ -2181,7 +2219,7 @@ const OCR = (() => {
       let cols = null;
       // a header can only start a table: first row of the image, after a non-table line, or after a larger gap
       const gap = prevRow ? b.y0 - prevRow.y1 : Infinity, typical = gaps.length ? median(gaps) : Infinity;
-      if (hasRun(b.blobs, G.W) && (!cur || prevRow !== b.prev || gap > typical * 1.6)) { cols = await headerCols(G, b); tick(1); }
+      if (hasRun(b.blobs, G.W) && (!cur || prevRow !== b.prev || gap > typical * 1.6 || (prevRow && Math.abs(b.shade - prevRow.shade) > 50))) { cols = await headerCols(G, b); tick(1); }
       if (cols) { cur = { b, cols, rows: [], idx: bands.indexOf(b) }; secs.push(cur); prevRow = b; gaps.length = 0; continue; }
       if (cur && aligned(b, cur.cols) >= 5) { cur.rows.push(b); if (prevRow) gaps.push(b.y0 - prevRow.y1); prevRow = b; }
     }
@@ -2196,9 +2234,13 @@ const OCR = (() => {
       else {
         const prev = bands[s.idx - 1];
         if (prev && s.b.y0 - prev.y1 < (s.b.y1 - s.b.y0) * 3 && !secs.some(o => o.rows.includes(prev) || o.b === prev) && prev.blobs.length) {
-          let x1 = prev.blobs[0].x1; for (const o of prev.blobs.slice(1)) { if (o.x0 - x1 > 40) break; x1 = o.x1; }
-          sec.name = (await courseName(G, Math.max(0, prev.blobs[0].x0 - 6), x1 + 6, prev.py0, prev.py1)).trim();
-          if (/\d/.test(sec.name) || sec.name.length > 14) sec.name = ''; // a date/score line, not a course title
+          const b0 = prev.blobs[0], b0w = b0.x1 - b0.x0 + 1;
+          let b0y0 = prev.y1, b0y1 = prev.y0; // vertical extent of the first piece
+          for (let y = prev.y0; y <= prev.y1; y++) for (let x = b0.x0; x <= b0.x1; x++) if (G.ink[y * G.W + x]) { if (y < b0y0) b0y0 = y; if (y > b0y1) b0y1 = y; }
+          const ic = prev.blobs.length > 1 && b0w <= 40 && b0w >= (b0y1 - b0y0 + 1) * 0.85 && prev.blobs[1].x0 - b0.x1 < 40 ? 1 : 0; // skip a square leading icon (🏴 GLEN-PEACH), not a letter
+          let x1 = prev.blobs[ic].x1; for (const o of prev.blobs.slice(ic + 1)) { if (o.x0 - x1 > 40) break; x1 = o.x1; }
+          sec.name = (await courseName(G, Math.max(0, prev.blobs[ic].x0 - 6), x1 + 6, prev.py0, prev.py1)).trim();
+          if (/\d/.test(sec.name) || sec.name.length > 14 || /^(name|date|tee ?off|score|par|hole|total|player)$/i.test(sec.name)) sec.name = ''; // a date/label line, not a course title
           if (sec.name) s.usedTitle = true;
         }
       }
@@ -2241,6 +2283,11 @@ const OCR = (() => {
       if (sec.rows.length) out.push(sec);
     }
     if (!out.length) return null;
+    // one title for two tables ("GLEN-PEACH"): first part for the first table, second part for the next untitled one
+    for (let i = 0; i + 1 < out.length; i++) {
+      const parts = out[i].name.split(/\s*[-–/·]\s*|\s+/).filter(Boolean);
+      if (parts.length === 2 && !out[i + 1].name) { out[i].name = parts[0]; out[i + 1].name = parts[1]; i++; }
+    }
     // date / time / club: everything above the first table, plus the area below the last one (e.g. "모나크 CC" footer)
     const topY = Math.max(0, (secs[0].usedTitle && bands[secs[0].idx - 1] ? bands[secs[0].idx - 1].y0 : secs[0].b.y0) - 4); // above the table (and above its course title, if one was used)
     const names = new Set(out.flatMap(s => s.rows.map(r => normName(r.name))));
@@ -2455,7 +2502,7 @@ const OCR = (() => {
       try { localStorage.setItem('ocrWarm', '1'); } catch (e) {}
     } catch (e) { /* try again next launch */ } finally { warming = false; }
   }
-  return { prepare, recognize, toRound, warmup, _dbg: { regionCanvas, clubLines, blueSpans, cropCanvas, analyze, cellCanvas, readNum, loadImage, prepGeneric, bandsOf, hasRun, headerCols, recognizeGeneric, w: () => numW, w8: () => numW8 } };
+  return { prepare, recognize, toRound, warmup, _dbg: { engLine, courseName, regionCanvas, clubLines, blueSpans, cropCanvas, analyze, cellCanvas, readNum, loadImage, prepGeneric, bandsOf, hasRun, headerCols, recognizeGeneric, w: () => numW, w8: () => numW8 } };
 })();
 
 async function recognizeFile(f, progress) {
