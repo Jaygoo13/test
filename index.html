@@ -7,11 +7,11 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="골프달력">
+<meta name="apple-mobile-web-app-title" content="골력">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="icon" href="icons/icon-192.png">
-<title>골프 스코어 달력</title>
+<title>골력</title>
 <style>
 :root{
   --bg:#f3f5f2; --card:#ffffff; --text:#18211d; --muted:#6b756f; --line:#e1e6e2;
@@ -297,6 +297,20 @@ table.ed td.t{min-width:40px;text-align:center;font-weight:800;font-size:14px}
 .guide .close{width:100%;margin-top:14px}
 .guide .arrow{pointer-events:none;position:fixed;font-size:42px;color:#fff;text-shadow:0 2px 8px rgba(0,0,0,.5);animation:bob 1s ease-in-out infinite;z-index:71}
 @keyframes bob{50%{transform:translateY(8px)}}
+.diary{margin-top:12px;border-top:1px solid var(--line);padding-top:12px}
+.diary .memo{font-size:15px;color:var(--text);line-height:1.6;margin-top:10px;white-space:pre-wrap}
+.ph-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:4px}
+.ph-grid .ph{aspect-ratio:1;border-radius:8px;background:var(--bg) center/cover no-repeat;position:relative;border:0;padding:0}
+.ph-grid.ed{margin-bottom:10px}
+.ph-grid .ph.add{border:1.5px dashed var(--line);color:var(--muted);font-size:26px;background:none}
+.ph-x{position:absolute;top:4px;right:4px;width:24px;height:24px;border-radius:50%;background:rgba(0,0,0,.6);color:#fff;font-size:12px;display:grid;place-items:center}
+.pv{position:fixed;inset:0;z-index:96;background:#000;display:flex;flex-direction:column}
+.pv-top{display:flex;justify-content:space-between;align-items:center;color:#fff;padding:calc(10px + env(safe-area-inset-top)) 14px 10px;font-size:14px}
+.pv-top button{color:#fff;font-size:15px;padding:6px 10px}
+.pv-img{flex:1;display:grid;place-items:center;overflow:hidden;padding-bottom:env(safe-area-inset-bottom)}
+.pv-img img{max-width:100%;max-height:100%;object-fit:contain}
+.pv-nav{position:absolute;top:50%;margin-top:-28px;width:44px;height:56px;color:#fff;font-size:40px;opacity:.8}
+.pv-nav.l{left:4px}.pv-nav.r{right:4px}
 .csugs{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;align-items:center}
 .csugs .csl{font-size:12px;color:var(--muted);font-weight:600;margin-right:2px}
 .csug{border:1px solid var(--line);background:var(--bg);border-radius:999px;padding:5px 11px;font-size:13px;font-weight:600}
@@ -404,6 +418,7 @@ details.st[open] > summary h3::after{content:"⌃"}
 <main id="main"></main>
 <button class="fab" id="fab" aria-label="기록 추가">＋</button>
 <input type="file" id="fileIn" accept="image/*" multiple class="hidden">
+<input type="file" id="photoIn" accept="image/*" multiple class="hidden">
 <input type="file" id="importIn" accept="application/json,.json" class="hidden">
 <div id="layer"></div>
 
@@ -433,6 +448,54 @@ function shrinkImage(img) {
   const d = x.getImageData(0, 0, w, h), p = d.data;
   for (let i = 0; i < p.length; i += 4) { const l = (p[i] * 299 + p[i + 1] * 587 + p[i + 2] * 114) / 1000; p[i] = p[i + 1] = p[i + 2] = l; }
   x.putImageData(d, 0, 0); return c.toDataURL('image/jpeg', 0.5);
+}
+// diary photo: colour JPEG, long edge ≤ 1280px
+async function compressPhoto(file) {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await new Promise((ok, no) => { const i = new Image(); i.onload = () => ok(i); i.onerror = () => no(new Error('사진을 열 수 없습니다')); i.src = url; });
+    const k = Math.min(1, 1280 / Math.max(img.naturalWidth, img.naturalHeight));
+    const c = document.createElement('canvas'); c.width = Math.round(img.naturalWidth * k); c.height = Math.round(img.naturalHeight * k);
+    c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+    return await new Promise(ok => c.toBlob(ok, 'image/jpeg', 0.72));
+  } finally { URL.revokeObjectURL(url); }
+}
+const PHOTO_URLS = new Map(); // photo id → object URL (cached while the app is open)
+async function photoUrl(id) {
+  if (PHOTO_URLS.has(id)) return PHOTO_URLS.get(id);
+  const p = await DB.photoGet(id).catch(() => null); if (!p || !p.blob) return null;
+  const u = URL.createObjectURL(p.blob); PHOTO_URLS.set(id, u); return u;
+}
+const blobToDataUrl = b => new Promise(ok => { const fr = new FileReader(); fr.onload = () => ok(fr.result); fr.readAsDataURL(b); });
+const dataUrlToBlob = async u => (await fetch(u)).blob();
+function openPhotoViewer(ids, start) {
+  let i = start;
+  const el = document.createElement('div'); el.className = 'pv';
+  el.innerHTML = `<div class="pv-top"><span id="pvN"></span><span><button id="pvShare">공유·저장</button><button id="pvX" aria-label="닫기">✕</button></span></div>
+    <div class="pv-img"><img id="pvImg" alt=""></div>
+    <button class="pv-nav l" id="pvL" aria-label="이전">‹</button><button class="pv-nav r" id="pvR" aria-label="다음">›</button>`;
+  document.body.appendChild(el);
+  const show = async () => { el.querySelector('#pvN').textContent = `${i + 1} / ${ids.length}`; el.querySelector('#pvImg').src = await photoUrl(ids[i]) || '';
+    el.querySelector('#pvL').style.visibility = i > 0 ? '' : 'hidden'; el.querySelector('#pvR').style.visibility = i < ids.length - 1 ? '' : 'hidden'; };
+  const go = d => { const j = i + d; if (j >= 0 && j < ids.length) { i = j; show(); } };
+  el.querySelector('#pvL').onclick = () => go(-1); el.querySelector('#pvR').onclick = () => go(1);
+  el.querySelector('#pvX').onclick = () => el.remove();
+  el.querySelector('#pvShare').onclick = async () => {
+    const p = await DB.photoGet(ids[i]); if (!p) return;
+    const f = new File([p.blob], `golryeok-${i + 1}.jpg`, { type: 'image/jpeg' });
+    try { if (navigator.canShare && navigator.canShare({ files: [f] })) { await navigator.share({ files: [f] }); return; } } catch (e) { if (e.name === 'AbortError') return; }
+    const a = document.createElement('a'); a.href = URL.createObjectURL(f); a.download = f.name; a.click();
+  };
+  let x0 = null;
+  el.addEventListener('touchstart', e => { x0 = e.touches[0].clientX; }, { passive: true });
+  el.addEventListener('touchend', e => { if (x0 == null) return; const dx = e.changedTouches[0].clientX - x0; x0 = null; if (Math.abs(dx) > 50) go(dx < 0 ? 1 : -1); }, { passive: true });
+  show();
+}
+async function fillPhotoGrids(root = document) {
+  for (const g of root.querySelectorAll('.ph-grid[data-ids]')) {
+    const ids = g.dataset.ids.split(',').filter(Boolean);
+    for (const [k, id] of ids.entries()) { const u = await photoUrl(id); const b = g.querySelector(`[data-k="${k}"]`); if (u && b) b.style.backgroundImage = `url(${u})`; }
+  }
 }
 const dataUrlKB = u => u ? Math.round(u.length * 0.75 / 1024) : 0;
 const loadDataUrl = u => new Promise((ok, no) => { const i = new Image(); i.onload = () => ok(i); i.onerror = no; i.src = u; });
@@ -535,8 +598,11 @@ const fmtDiff = d => d > 0 ? `+${d}` : d === 0 ? 'E' : String(d);
 const DB = (() => {
   let dbp;
   const open = () => dbp || (dbp = new Promise((res, rej) => {
-    const r = indexedDB.open('golf-score-calendar', 1);
-    r.onupgradeneeded = () => { const d = r.result; d.createObjectStore('rounds', { keyPath: 'id' }); d.createObjectStore('kv'); };
+    const r = indexedDB.open('golf-score-calendar', 2);
+    r.onupgradeneeded = () => { const d = r.result;
+      if (!d.objectStoreNames.contains('rounds')) d.createObjectStore('rounds', { keyPath: 'id' });
+      if (!d.objectStoreNames.contains('kv')) d.createObjectStore('kv');
+      if (!d.objectStoreNames.contains('photos')) d.createObjectStore('photos', { keyPath: 'id' }); };
     r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
   }));
   const tx = async (store, mode, fn) => {
@@ -553,6 +619,12 @@ const DB = (() => {
     clear: () => tx('rounds', 'readwrite', s => s.clear()),
     get: k => tx('kv', 'readonly', s => s.get(k)),
     set: (k, v) => tx('kv', 'readwrite', s => s.put(v, k)),
+    // diary photos (Blobs) live in their own store so rounds stay small
+    photoPut: p => tx('photos', 'readwrite', s => s.put(p)),
+    photoGet: id => tx('photos', 'readonly', s => s.get(id)),
+    photoDel: id => tx('photos', 'readwrite', s => s.delete(id)),
+    photoAll: () => tx('photos', 'readonly', s => s.getAll()),
+    photoClear: () => tx('photos', 'readwrite', s => s.clear()),
   };
 })();
 
@@ -608,7 +680,8 @@ function renderMonth() {
         (r.time ? `<span class="tm">${esc(r.time)}</span>` : '') +
         `<span class="me">${playerTotal(r, mi) || '-'}</span>` +
         (co.length ? `<span class="co">${co.join('·')}</span>` : '') +
-        (rs.length > 1 ? `<span class="more">+${rs.length - 1}</span>` : '');
+        (rs.length > 1 ? `<span class="more">+${rs.length - 1}</span>` : '') +
+        (rs.some(x => (x.photos || []).length || x.memo) ? `<span class="tm">${rs.some(x => (x.photos || []).length) ? '📷' : ''}${rs.some(x => x.memo) ? '📝' : ''}</span>` : '');
     }
     h += `<button class="${cls}" data-date="${ds}">${inner}</button>`;
   }
@@ -665,13 +738,16 @@ function renderDay() {
       </div>
       <div class="chips">${chips}</div>
       ${scoreTable(r)}
-      ${r.memo ? `<div class="memo">${esc(r.memo)}</div>` : ''}
+      ${(r.photos || []).length || r.memo ? `<div class="diary">
+        ${(r.photos || []).length ? `<div class="ph-grid" data-ids="${r.photos.join(',')}">${r.photos.map((id, k) => `<button class="ph" data-k="${k}" data-ph="${r.id}"></button>`).join('')}</div>` : ''}
+        ${r.memo ? `<div class="memo">${esc(r.memo)}</div>` : ''}</div>` : ''}
       ${r.image ? `<details class="img"><summary>스코어카드 이미지 보기</summary><img src="${r.image}" alt="스코어카드"></details>` : ''}
       <div class="round-actions">
         <button class="btn primary" data-act="edit" data-id="${r.id}">편집</button>
         <button class="btn danger" data-act="del" data-id="${r.id}">삭제</button>
       </div></article>`;
   }).join('');
+  fillPhotoGrids($('#main'));
 }
 
 /* ================= statistics ================= */
@@ -873,11 +949,15 @@ $('#main').addEventListener('click', async e => {
     else S.selected = ds;
     render(); return;
   }
+  const ph = e.target.closest('[data-ph]');
+  if (ph) { const r = S.rounds.find(x => x.id === ph.dataset.ph); if (r) openPhotoViewer(r.photos, +ph.dataset.k); return; }
   const b = e.target.closest('[data-act]'); if (!b) return;
   if (b.dataset.act === 'add') openAddMenu();
   if (b.dataset.act === 'edit') openEditor(clone(S.rounds.find(r => r.id === b.dataset.id)));
   if (b.dataset.act === 'del') {
     if (!confirm('이 라운드 기록을 삭제할까요?')) return;
+    const gone = S.rounds.find(r => r.id === b.dataset.id);
+    for (const id of (gone && gone.photos) || []) await DB.photoDel(id).catch(() => {});
     await DB.del(b.dataset.id); S.rounds = S.rounds.filter(r => r.id !== b.dataset.id); render(); toast('삭제했습니다');
   }
 });
@@ -918,7 +998,7 @@ function blankRound() {
 let ED = null; // { r, mode, card, warn:Set }
 function openEditor(r, extra = {}) {
   return new Promise(done => {
-    ED = { r, clubSuggest: extra.clubSuggest || [], mode: extra.mode || S.settings.inputMode || 'rel', card: extra.card || null, warn: new Set(extra.warn || []), notes: extra.notes || [], done };
+    ED = { r, photos: (r.photos || []).map(id => ({ id })), clubSuggest: extra.clubSuggest || [], mode: extra.mode || S.settings.inputMode || 'rel', card: extra.card || null, warn: new Set(extra.warn || []), notes: extra.notes || [], done };
     const queued = extra.remaining > 0;
     $('#layer').innerHTML = `<div class="sheet" id="ed">
       <div class="sheet-head"><button id="edCancel">${queued ? '건너뛰기' : '취소'}</button><h3>${r.id ? '라운드 편집' : '새 라운드'}${extra.tag || ''}</h3><button id="edSave">저장</button></div>
@@ -948,7 +1028,9 @@ function renderEditor() {
   h += `<div class="mode">입력 방식<div class="seg" id="modeSeg"><button data-m="abs">타수 (5, 4…)</button><button data-m="rel">파 대비 (+1, 0…)</button></div></div>`;
   h += `<div id="crsList"></div>`;
   h += `<div style="display:flex;gap:16px;margin-bottom:14px"><button class="link" id="addCrs">＋ 9홀 코스 추가</button></div>`;
-  h += `<div class="box"><div class="fld" style="margin:0"><label>메모</label><textarea id="fMemo" rows="2">${esc(r.memo)}</textarea></div></div>`;
+  h += `<div class="box"><h4>📷 그날의 사진 · 메모 <button class="link" id="addPh">＋ 사진 추가</button></h4>
+    <div class="ph-grid ed" id="edPhotos"></div>
+    <textarea id="fMemo" rows="4" placeholder="오늘의 라운드는 어땠나요? 날씨, 컨디션, 기억에 남는 샷…">${esc(r.memo)}</textarea></div>`;
   $('#edBody').innerHTML = h;
   $('#fDate').onchange = e => r.date = e.target.value;
   $('#fTime').onchange = e => r.time = e.target.value;
@@ -962,11 +1044,37 @@ function renderEditor() {
   $('#fClub').oninput = e => r.club = e.target.value;
   $('#fClub').onchange = drawSug;
   $('#fMemo').oninput = e => r.memo = e.target.value;
+  $('#addPh').onclick = () => { $('#photoIn').value = ''; $('#photoIn').click(); };
+  renderEdPhotos();
   $('#addPl').onclick = () => { r.players.push({ name: '', me: false, scores: r.courses.map(c => Array(c.par.length).fill(null)) }); renderPlayers(); renderCourses(); };
   $('#addCrs').onclick = () => { r.courses.push({ name: '', par: [4, 4, 3, 4, 5, 4, 3, 4, 5] }); r.players.forEach(p => p.scores.push(Array(9).fill(null))); renderCourses(); };
   $('#modeSeg').onclick = e => { const m = e.target.dataset.m; if (!m) return; ED.mode = m; S.settings.inputMode = m; DB.set('settings', S.settings).catch(() => {}); renderCourses(); };
   renderPlayers(); renderCourses();
 }
+// ED.photos: [{ id, blob? (new, not saved yet) }]
+async function renderEdPhotos() {
+  const box = $('#edPhotos'); if (!box) return;
+  box.innerHTML = ED.photos.map((p, k) => `<div class="ph" data-k="${k}"><button class="ph-x" data-rm="${k}" aria-label="사진 빼기">✕</button></div>`).join('')
+    + `<button class="ph add" id="addPh2" aria-label="사진 추가">＋</button>`;
+  box.onclick = e => {
+    const rm = e.target.closest('[data-rm]'); if (rm) { ED.photos.splice(+rm.dataset.rm, 1); renderEdPhotos(); return; }
+    if (e.target.closest('#addPh2')) { $('#photoIn').value = ''; $('#photoIn').click(); }
+  };
+  for (const [k, p] of ED.photos.entries()) {
+    const u = p.blob ? (p.url || (p.url = URL.createObjectURL(p.blob))) : await photoUrl(p.id);
+    const d = box.querySelector(`[data-k="${k}"]`); if (u && d) d.style.backgroundImage = `url(${u})`;
+  }
+}
+$('#photoIn').onchange = async e => {
+  const files = [...e.target.files]; if (!files.length || !ED) return;
+  const pg = files.length > 2 ? showProgress('사진 정리 중') : null;
+  for (const [i, f] of files.entries()) {
+    try { ED.photos.push({ id: 'ph' + uid(), blob: await compressPhoto(f), isNew: true }); } catch (err) { toast(err.message); }
+    if (pg) pg.set(`${i + 1}/${files.length}`, (i + 1) / files.length);
+  }
+  if (pg) pg.close();
+  renderEdPhotos();
+};
 function renderPlayers() {
   const r = ED.r;
   $('#plList').innerHTML = r.players.map((p, i) => `<div class="pl">
@@ -1056,6 +1164,13 @@ async function saveEditor() {
   const now = Date.now();
   if (!r.id) { r.id = uid(); r.createdAt = now; }
   r.updatedAt = now;
+  // diary photos: store new ones, drop removed ones
+  const keep = ED.photos.map(p => p.id), before = r.photos || [];
+  try {
+    for (const p of ED.photos) if (p.isNew) { await DB.photoPut({ id: p.id, roundId: r.id, blob: p.blob, at: Date.now() }); p.isNew = false; }
+    for (const id of before) if (!keep.includes(id)) { await DB.photoDel(id); PHOTO_URLS.delete(id); }
+  } catch (e) { return toast('사진 저장 실패: ' + e.message, 4000); }
+  r.photos = keep;
   try { await DB.put(r); } catch (e) { return toast('저장 실패: ' + e.message, 4000); }
   const i = S.rounds.findIndex(x => x.id === r.id); if (i >= 0) S.rounds[i] = r; else S.rounds.push(r);
   // remember course → club mapping, and my name
@@ -1086,7 +1201,7 @@ async function openSettings() {
       <input type="text" id="stName" value="${esc(S.settings.myName)}" placeholder="예: 홍길동"></div></div>
     <div class="box">
       <div class="set-item"><div>백업 내보내기<div class="d">전체 기록 ${S.rounds.length}건을 JSON 파일로 저장</div></div><button class="btn" id="stExp" style="flex:none">내보내기</button></div>
-      <div class="set-item"><div>백업에 이미지 포함<div class="d">${incImg ? `포함 — 백업 파일 약 ${Math.max(1, Math.round(imgKB / 1024))}MB 증가` : '제외 — 스코어 데이터만 저장 (가져올 때 기존 이미지는 유지)'}</div></div>
+      <div class="set-item"><div>백업에 이미지 포함<div class="d">${incImg ? `포함 — 스코어카드 이미지·사진까지 저장 (파일이 커짐)` : '제외 — 스코어와 메모만 저장 (가져올 때 이 폰의 이미지·사진은 유지)'}</div></div>
         <button class="me-tg ${incImg ? 'on' : ''}" id="stBkImg" style="flex:none">${incImg ? '포함' : '제외'}</button></div>
       <div class="set-item"><div>동반자 이름 규칙<div class="d">박**, 홍**, 이** → 실명으로 바꾸는 규칙 ${(S.settings.groups || []).length}개</div></div><button class="btn" id="stGroups" style="flex:none">편집</button></div>
       <div class="set-item"><div>골프장 이름 정리<div class="d">저장된 기록의 골프장명을 전국 골프장 목록 이름으로 맞춥니다</div></div><button class="btn" id="stClubFix" style="flex:none">정리</button></div>
@@ -1131,7 +1246,7 @@ async function openSettings() {
   $('#stWipe').onclick = async () => {
     if (!confirm('모든 라운드 기록을 삭제합니다. 되돌릴 수 없습니다. 계속할까요?')) return;
     if (!confirm('정말 삭제할까요? (백업을 먼저 권장합니다)')) return;
-    await DB.clear(); S.rounds = []; toast('모두 삭제했습니다'); openSettings();
+    await DB.clear(); await DB.photoClear().catch(() => {}); PHOTO_URLS.clear(); S.rounds = []; toast('모두 삭제했습니다'); openSettings();
   };
 }
 $('#settingsBtn').onclick = openSettings;
@@ -1218,7 +1333,9 @@ function openGroups() {
 }
 async function exportBackup() {
   const rounds = S.settings.backupImages ? S.rounds : S.rounds.map(r => ({ ...r, image: null }));
-  const data = { app: 'golf-score-calendar', version: 1, exportedAt: new Date().toISOString(), images: !!S.settings.backupImages, settings: S.settings, clubMap: S.clubMap, rounds };
+  let photos;
+  if (S.settings.backupImages) { photos = []; for (const p of await DB.photoAll()) photos.push({ id: p.id, roundId: p.roundId, at: p.at, data: await blobToDataUrl(p.blob) }); }
+  const data = { app: 'golf-score-calendar', version: 2, exportedAt: new Date().toISOString(), images: !!S.settings.backupImages, settings: S.settings, clubMap: S.clubMap, rounds, photos };
   const name = `golf-scores-${ymd(new Date())}.json`;
   const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
   try {
@@ -1236,9 +1353,12 @@ $('#importIn').onchange = async e => {
     let n = 0;
     for (const r of d.rounds) {
       if (!(r && r.id && r.date && Array.isArray(r.players) && Array.isArray(r.courses))) continue;
-      if (!r.image) { const old = S.rounds.find(o => o.id === r.id); if (old && old.image) r.image = old.image; } // keep image already on this phone
+      const old = S.rounds.find(o => o.id === r.id);
+      if (!r.image && old && old.image) r.image = old.image; // keep image already on this phone
+      if (!Array.isArray(d.photos) && old && (old.photos || []).length) r.photos = old.photos; // photo-less backup: keep this phone's photos
       await DB.put(r); n++;
     }
+    if (Array.isArray(d.photos)) for (const p of d.photos) if (p && p.id && p.data) await DB.photoPut({ id: p.id, roundId: p.roundId, at: p.at, blob: await dataUrlToBlob(p.data) });
     if (d.clubMap) { S.clubMap = Object.assign({}, d.clubMap, S.clubMap); await DB.set('clubMap', S.clubMap); }
     if (d.settings && !S.settings.myName && d.settings.myName) { S.settings.myName = d.settings.myName; await DB.set('settings', S.settings); }
     if (d.settings && Array.isArray(d.settings.groups) && !(S.settings.groups || []).length) { S.settings.groups = d.settings.groups; await DB.set('settings', S.settings); }
@@ -2077,7 +2197,7 @@ const INSTALL = (() => {
     if (!el) { el = document.createElement('div'); el.id = 'forceGate'; el.className = 'fgate'; document.body.appendChild(el); }
     const n = S.rounds.length;
     let body;
-    if (installed) body = `<div class="fg-done">✅ 설치 완료!<br><b>홈 화면의 ⛳ 골프달력 아이콘</b>으로 열어주세요.</div>`;
+    if (installed) body = `<div class="fg-done">✅ 설치 완료!<br><b>홈 화면의 ⛳ 골력 아이콘</b>으로 열어주세요.</div>`;
     else if (inApp) body = `<p class="fg-why">카카오톡 같은 앱 안의 브라우저에서는 홈 화면에 추가할 수 없어요.</p>
       <button class="btn primary fg-main" id="fgGo">${ios ? 'Safari로 열기' : 'Chrome으로 열기'}</button>
       <p class="fg-sub">안 열리면 화면의 <b>⋯</b> 메뉴 → <b>${ios ? 'Safari로 열기' : '다른 브라우저로 열기'}</b></p>`;
