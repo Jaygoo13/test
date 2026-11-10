@@ -317,9 +317,9 @@ table.ed td.t{min-width:40px;text-align:center;font-weight:800;font-size:14px}
 .ph-grid.ed{margin-bottom:10px}
 .ph-grid .ph.add{border:1.5px dashed var(--line);color:var(--muted);font-size:26px;background:none}
 .ph-grid .ph.vid{background-color:#222}
-.ph-grid .ph.vid::after{content:"▶";position:absolute;inset:0;display:grid;place-items:center;color:#fff;font-size:22px;text-shadow:0 1px 6px rgba(0,0,0,.6)}
+.ph-grid .ph.vid::after{content:"▶";position:absolute;inset:0;pointer-events:none;display:grid;place-items:center;color:#fff;font-size:22px;text-shadow:0 1px 6px rgba(0,0,0,.6)}
 .pv-img video{max-width:100%;max-height:100%;background:#000}
-.ph-x{position:absolute;top:4px;right:4px;width:24px;height:24px;border-radius:50%;background:rgba(0,0,0,.6);color:#fff;font-size:12px;display:grid;place-items:center}
+.ph-x{position:absolute;top:2px;right:2px;z-index:2;width:34px;height:34px;border-radius:50%;background:rgba(0,0,0,.65);color:#fff;font-size:15px;font-weight:700;display:grid;place-items:center;border:2px solid rgba(255,255,255,.85)}
 .pv{position:fixed;inset:0;z-index:96;background:#000;display:flex;flex-direction:column}
 .pv-top{display:flex;justify-content:space-between;align-items:center;color:#fff;padding:calc(10px + env(safe-area-inset-top)) 14px 10px;font-size:14px}
 .pv-top button{color:#fff;font-size:15px;padding:6px 10px}
@@ -493,7 +493,7 @@ async function thumbInfo(id) { // { url, video } for grid tiles (video → poste
   return { url: PHOTO_URLS.get(k) || null, video };
 }
 const MAX_VIDEO_SEC = 10;
-const APP_VERSION = '2026.11.10-v8';
+const APP_VERSION = '2026.11.10-v9';
 // video poster: a frame near the start, ≤ 480px
 // video length straight from the MP4/MOV header (moov → mvhd); works even when the browser won't preload the video (iPhone Safari)
 async function movDuration(file) {
@@ -542,10 +542,10 @@ function makePoster(file) {
 }
 const blobToDataUrl = b => new Promise(ok => { const fr = new FileReader(); fr.onload = () => ok(fr.result); fr.readAsDataURL(b); });
 const dataUrlToBlob = async u => (await fetch(u)).blob();
-function openPhotoViewer(ids, start) {
-  let i = start;
+function openPhotoViewer(ids, start, onDelete) {
+  let i = start; ids = ids.slice();
   const el = document.createElement('div'); el.className = 'pv';
-  el.innerHTML = `<div class="pv-top"><span id="pvN"></span><span><button id="pvShare">공유·저장</button><button id="pvX" aria-label="닫기">✕</button></span></div>
+  el.innerHTML = `<div class="pv-top"><span id="pvN"></span><span>${onDelete ? '<button id="pvDel">삭제</button>' : ''}<button id="pvShare">공유·저장</button><button id="pvX" aria-label="닫기">✕</button></span></div>
     <div class="pv-img" id="pvBox"></div>
     <button class="pv-nav l" id="pvL" aria-label="이전">‹</button><button class="pv-nav r" id="pvR" aria-label="다음">›</button>`;
   document.body.appendChild(el);
@@ -560,6 +560,13 @@ function openPhotoViewer(ids, start) {
   const go = d => { const j = i + d; if (j >= 0 && j < ids.length) { i = j; show(); } };
   el.querySelector('#pvL').onclick = () => go(-1); el.querySelector('#pvR').onclick = () => go(1);
   el.querySelector('#pvX').onclick = () => { stop(); el.remove(); };
+  const del = el.querySelector('#pvDel');
+  if (del) del.onclick = async () => {
+    if (!confirm(`이 ${MEDIA_META.get(ids[i])?.video ? '영상' : '사진'}을 삭제할까요?`)) return;
+    stop(); await onDelete(ids[i]); ids.splice(i, 1);
+    if (!ids.length) { el.remove(); return; }
+    if (i >= ids.length) i = ids.length - 1; show();
+  };
   el.querySelector('#pvShare').onclick = async () => {
     const p = await mediaRec(ids[i]); if (!p) return;
     const type = p.blob.type || (p.type === 'video' ? 'video/mp4' : 'image/jpeg'), ext = (type.split('/')[1] || 'bin').replace('quicktime', 'mov');
@@ -1036,7 +1043,15 @@ $('#main').addEventListener('click', async e => {
     render(); return;
   }
   const ph = e.target.closest('[data-ph]');
-  if (ph) { const r = S.rounds.find(x => x.id === ph.dataset.ph); if (r) openPhotoViewer(r.photos, +ph.dataset.k); return; }
+  if (ph) {
+    const r = S.rounds.find(x => x.id === ph.dataset.ph);
+    if (r) openPhotoViewer(r.photos, +ph.dataset.k, async id => { // delete straight from the day view
+      r.photos = (r.photos || []).filter(x => x !== id);
+      await DB.photoDel(id).catch(() => {}); PHOTO_URLS.delete(id); PHOTO_URLS.delete(id + '#p');
+      await DB.put(r); render(); toast('삭제했습니다');
+    });
+    return;
+  }
   const b = e.target.closest('[data-act]'); if (!b) return;
   if (b.dataset.act === 'add') openAddMenu();
   if (b.dataset.act === 'edit') openEditor(clone(S.rounds.find(r => r.id === b.dataset.id)));
