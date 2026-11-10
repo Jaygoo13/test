@@ -446,14 +446,15 @@ function skelKo(s) {
   for (const ch of String(s || '')) {
     const c = ch.charCodeAt(0) - 0xAC00;
     if (c >= 0 && c < 11172) { const cho = (c / 588) | 0, jung = ((c % 588) / 28) | 0, jong = c % 28; o += CHO[cho] + (W_VOWEL.has(jung) ? 'w' : '') + JONG[jong]; }
-    else if (/[a-z0-9]/i.test(ch)) o += skelEn(ch);
+    else if (/[0-9]/.test(ch)) o += ch;
+    else if (/[a-z]/i.test(ch)) o += skelEn(ch);
   }
   return o.replace(/(.)\1+/g, '$1');
 }
 function skelEn(s) {
-  let t = String(s || '').toLowerCase().replace(/[^a-z]/g, '');
-  t = t.replace(/ch$/, 'k').replace(/tch|ch|j|z/g, 'J').replace(/ph|f|v|b/g, 'p').replace(/ck|q|x|c(?![eiy])|g/g, 'k').replace(/c/g, 's')
-    .replace(/sh|th/g, 's').replace(/d/g, 't').replace(/ng/g, 'n').replace(/r(?=[aeiou])/g, 'l').replace(/r/g, '').replace(/[aeiouyh]/g, '').replace(/J/g, 'j');
+  let t = String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  t = t.replace(/tu(?=r)/g, 'Ju').replace(/ch$/, 'k').replace(/tch|ch|j|z/g, 'J').replace(/ph|f|v|b/g, 'p').replace(/ck|q|x|c(?![eiy])|g/g, 'k').replace(/c/g, 's')
+    .replace(/sh|th/g, 's').replace(/d/g, 't').replace(/ng/g, 'n').replace(/r(?=[aeiouy])/g, 'l').replace(/r/g, '').replace(/[aeiouyh]/g, '').replace(/J/g, 'j');
   return t.replace(/(.)\1+/g, '$1');
 }
 const CLUB_IDX = GOLF_CLUBS.map(([reg, name]) => ({ reg, name, core: clubCore(name), sk: skelKo(clubCore(name)) }));
@@ -472,8 +473,8 @@ function matchClubs(cands) {
         sc *= c.w || 1; add(e.name, sc, ci);
       }
     } else {
-      const words = c.text.replace(/\b(country|club|golf|resort|the|cc|gc|c\.c|g\.c|and|&)\b/gi, ' ').trim();
-      const k = skelEn(words); if (k.length < 3) return;
+      const words = c.text.replace(/\b(country|club|golf|resort|the|and)\b|(cc|gc|c\.c\.?|g\.c\.?)\b|&/gi, ' ').trim();
+      let k = skelEn(words); if (k.length < 3 && /[a-z0-9]/i.test(words)) k = skelEn(c.text); if (k.length < 3) return; // "GOLF CLUB Q" → whole text; "COUNTRY CLUB" alone → no clue
       strongC.add(ci);
       for (const e of CLUB_IDX) {
         if (e.sk.length < 3) continue;
@@ -489,6 +490,14 @@ function matchClubs(cands) {
   }).sort((a, b) => b.score - a.score);
 }
 
+// a saved/remembered name → the official list name it clearly refers to ("ZENSFIELD" → "젠스필드 CC"), or null
+const CLUB_NAMES = new Set(GOLF_CLUBS.map(c => c[1]));
+function canonicalClub(name, min = 0.85) {
+  if (!name || CLUB_NAMES.has(name)) return null;
+  const m = matchClubs([{ text: name, kind: /[가-힣]/.test(name) ? 'ko' : 'en' }]);
+  if (m[0] && m[0].strong && m[0].score >= min && (!m[1] || m[0].score - m[1].score >= 0.05)) return m[0];
+  return null;
+}
 // 고정 동반자 그룹: 나를 뺀 동반자들의 성(첫 글자)이 그룹과 정확히 같으면(순서 무관) 실명으로 바꿉니다.
 // 예) 박**, 홍**, 이** → 박한진, 홍승수, 이종승
 const KNOWN_GROUPS = [
@@ -1071,6 +1080,7 @@ async function openSettings() {
       <div class="set-item"><div>백업 내보내기<div class="d">전체 기록 ${S.rounds.length}건을 JSON 파일로 저장</div></div><button class="btn" id="stExp" style="flex:none">내보내기</button></div>
       <div class="set-item"><div>백업에 이미지 포함<div class="d">${incImg ? `포함 — 백업 파일 약 ${Math.max(1, Math.round(imgKB / 1024))}MB 증가` : '제외 — 스코어 데이터만 저장 (가져올 때 기존 이미지는 유지)'}</div></div>
         <button class="me-tg ${incImg ? 'on' : ''}" id="stBkImg" style="flex:none">${incImg ? '포함' : '제외'}</button></div>
+      <div class="set-item"><div>골프장 이름 정리<div class="d">저장된 기록의 골프장명을 전국 골프장 목록 이름으로 맞춥니다</div></div><button class="btn" id="stClubFix" style="flex:none">정리</button></div>
       <div class="set-item"><div>스코어카드 이미지<div class="d">${withImg.length}장 · 약 ${imgKB >= 1024 ? (imgKB / 1024).toFixed(1) + 'MB' : imgKB + 'KB'}${big ? ` · 큰 이미지 ${big}장` : ''}</div></div>${big ? '<button class="btn" id="stShrink" style="flex:none">줄이기</button>' : ''}</div>
       <div class="set-item"><div>백업 가져오기<div class="d">JSON 백업 파일에서 복원 (같은 기록은 덮어씀)</div></div><button class="btn" id="stImp" style="flex:none">가져오기</button></div>
       <div class="set-item"><div>오프라인 인식 준비<div class="d">이미지 인식 엔진·한글 데이터를 미리 받아둡니다 (Wi-Fi 권장)</div></div><button class="btn" id="stOcr" style="flex:none">받기</button></div>
@@ -1090,6 +1100,7 @@ async function openSettings() {
   $('#stExp').onclick = exportBackup;
   const si = $('#stInstall'); if (si) si.onclick = () => INSTALL.install();
   $('#stBkImg').onclick = () => { S.settings.backupImages = !incImg; DB.set('settings', S.settings); openSettings(); };
+  $('#stClubFix').onclick = openClubFix;
   const sh = $('#stShrink'); if (sh) sh.onclick = async () => {
     const pg = showProgress('이미지 줄이는 중'); let i = 0, before = imgKB;
     const targets = withImg.filter(r => dataUrlKB(r.image) > 80);
@@ -1114,6 +1125,29 @@ async function openSettings() {
   };
 }
 $('#settingsBtn').onclick = openSettings;
+function openClubFix() {
+  const counts = {}; S.rounds.forEach(r => { if (r.club) counts[r.club] = (counts[r.club] || 0) + 1; });
+  const rows = Object.keys(counts).map(name => ({ name, n: counts[name], m: canonicalClub(name, 0.7) })).filter(x => x.m)
+    .sort((a, b) => b.m.score - a.m.score);
+  const el = document.createElement('div'); el.className = 'guide';
+  el.innerHTML = `<div class="gbox" style="max-height:80vh;overflow-y:auto"><h3>골프장 이름 정리</h3>${rows.length ? `
+    <p style="font-size:13px;color:var(--muted);margin:0 0 8px">체크한 항목을 오른쪽 이름으로 바꿉니다. 확실하지 않은 항목은 체크가 꺼져 있어요.</p>
+    ${rows.map((x, i) => `<label class="set-item" style="cursor:pointer"><span style="flex:1"><s style="color:var(--muted)">${esc(x.name)}</s> → <b>${esc(x.m.name)}</b><div class="d">${x.n}건</div></span>
+      <input type="checkbox" data-i="${i}" ${x.m.score >= 0.85 ? 'checked' : ''} style="width:22px;height:22px;flex:none"></label>`).join('')}
+    <button class="btn primary" id="cfGo" style="width:100%;margin-top:12px;padding:13px">바꾸기</button>` : '<p style="color:var(--muted)">바꿀 이름이 없습니다. 모두 목록 이름이거나 목록에서 찾지 못한 이름이에요.</p>'}
+    <button class="btn close" style="width:100%;margin-top:8px">닫기</button></div>`;
+  el.onclick = e => { if (e.target === el || e.target.closest('.close')) el.remove(); };
+  document.body.appendChild(el);
+  const go = el.querySelector('#cfGo'); if (!go) return;
+  go.onclick = async () => {
+    const map = {}; el.querySelectorAll('input[data-i]').forEach(cb => { if (cb.checked) { const x = rows[+cb.dataset.i]; map[x.name] = x.m.name; } });
+    let n = 0;
+    for (const r of S.rounds) if (map[r.club]) { r.club = map[r.club]; await DB.put(r); n++; }
+    for (const k in S.clubMap) if (map[S.clubMap[k]]) S.clubMap[k] = map[S.clubMap[k]]; // remembered logos/courses follow the new name
+    await DB.set('clubMap', S.clubMap);
+    el.remove(); toast(`${n}건의 골프장 이름을 바꿨습니다`); openSettings();
+  };
+}
 async function exportBackup() {
   const rounds = S.settings.backupImages ? S.rounds : S.rounds.map(r => ({ ...r, image: null }));
   const data = { app: 'golf-score-calendar', version: 1, exportedAt: new Date().toISOString(), images: !!S.settings.backupImages, settings: S.settings, clubMap: S.clubMap, rounds };
@@ -1838,6 +1872,7 @@ const OCR = (() => {
       if (best >= 0.6) { r.club = bestClub; clubSrc = 'memo'; }
     }
     if (!r.club && key && S.clubMap[key]) { r.club = S.clubMap[key]; clubSrc = 'memo'; }
+    if (clubSrc === 'memo') { const c = canonicalClub(r.club); if (c) r.club = c.name; }
     const dict = matchClubs(res.clubCands || (res.logo ? [{ text: res.logo.text, kind: 'en' }] : []));
     if (!r.club && dict[0] && dict[0].strong && dict[0].score >= 0.8 && (!dict[1] || dict[0].score - dict[1].score >= 0.05)) { r.club = dict[0].name; clubSrc = 'dict'; }
     if (!r.club && dict[0] && !dict[0].strong) { clubSrc = 'ask'; } // only a short fragment (e.g. "안성"): offer candidates
