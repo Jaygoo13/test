@@ -234,6 +234,8 @@ table.ed td.t{min-width:40px;text-align:center;font-weight:800;font-size:14px}
 .mk-tbl div{display:grid;grid-template-columns:48px repeat(5,1fr) 40px;gap:3px;align-items:center}
 .mk-tbl span{background:var(--bg);border-radius:4px;text-align:center;padding:3px 0}
 .mk-tbl .h span{background:var(--blue);color:#fff}
+.pl-pick{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border:1.5px solid var(--line);border-radius:12px;background:var(--bg);font-size:16px;font-weight:600}
+.pl-pick.on{border-color:var(--accent);background:var(--accent-soft);color:var(--accent)}
 .mk-tbl .me span{background:var(--accent-soft);color:var(--accent);font-weight:800}
 .mk-tbl em{font-style:normal;font-weight:800;font-size:10px;color:var(--ok);opacity:0}
 .play .mk-tbl em{animation:pop .4s forwards}
@@ -499,25 +501,23 @@ function canonicalClub(name, min = 0.85) {
   if (m[0] && m[0].strong && m[0].score >= min && (!m[1] || m[0].score - m[1].score >= 0.05)) return m[0];
   return null;
 }
-// 고정 동반자 그룹: 나를 뺀 동반자들의 성(첫 글자)이 그룹과 정확히 같으면(순서 무관) 실명으로 바꿉니다.
-// 예) 박**, 홍**, 이** → 박한진, 홍승수, 이종승
-const KNOWN_GROUPS = [
-  ['박한진', '홍승수', '이종승'],
-  ['박한진', '권용환', '이종승'],
-  ['오석원', '박지훈', '이상영'],
-  ['김병주', '박한진', '이종승'],
-  ['박한진', '문준기', '김형수'],
-];
-const KNOWN_GROUPS_OWNER = '구자윤'; // 이 그룹 치환은 이 사용자 본인의 기록에만 적용
-function applyKnownGroups(r) {
-  const me = r.players.find(p => p.me);
-  if (!me || normName(me.name) !== normName(KNOWN_GROUPS_OWNER)) return;
+// 동반자 이름 규칙 (설정에서 편집): 나를 뺀 동반자들의 성(첫 글자)이 규칙과 정확히 같으면(순서 무관) 실명으로 바꿉니다.
+// 예) 박**, 홍**, 이** + 규칙 [박한진, 홍승수, 이종승] → 박한진, 홍승수, 이종승
+const OWNER_SEED = { owner: '구자윤', groups: [['박한진', '홍승수', '이종승'], ['박한진', '권용환', '이종승'], ['오석원', '박지훈', '이상영'], ['김병주', '박한진', '이종승'], ['박한진', '문준기', '김형수']] };
+const surOf = n => (String(n || '').match(/[가-힣]/) || [''])[0];
+function applyKnownGroups(r, onlyMasked) {
+  const groups = (S.settings.groups || []).filter(g => g.length);
   const others = r.players.filter(p => !p.me);
-  const sur = others.map(p => (String(p.name || '').match(/[가-힣]/) || [''])[0]);
-  if (!others.length || sur.some(c => !c)) return;
+  if (!groups.length || !others.length) return false;
+  if (onlyMasked && !others.some(p => /[*＊]/.test(p.name) || normName(p.name).length < 2)) return false;
+  const sur = others.map(p => surOf(p.name));
+  if (sur.some(c => !c)) return false;
   const key = sur.slice().sort().join('');
-  const g = KNOWN_GROUPS.find(g => g.length === others.length && g.map(n => n[0]).sort().join('') === key);
-  if (g) others.forEach((p, i) => { p.name = g.find(n => n[0] === sur[i]); });
+  const g = groups.find(g => g.length === others.length && g.map(surOf).sort().join('') === key);
+  if (!g) return false;
+  let changed = false;
+  others.forEach((p, i) => { const n = g.find(x => surOf(x) === sur[i]); if (n && n !== p.name) { p.name = n; changed = true; } });
+  return changed;
 }
 const normName = s => String(s || '').replace(/[\s*＊·.]/g, '').toLowerCase();
 function toast(msg, ms = 2400) {
@@ -571,6 +571,10 @@ const roundsOn = date => S.rounds.filter(r => r.date === date).sort((a, b) => (a
 async function loadAll() {
   try { S.rounds = await DB.all(); } catch (e) { S.rounds = []; toast('저장소를 열 수 없습니다: ' + e.message, 4000); }
   try { Object.assign(S.settings, (await DB.get('settings')) || {}); } catch (e) {}
+  if (!Array.isArray(S.settings.groups)) {
+    S.settings.groups = normName(S.settings.myName) === normName(OWNER_SEED.owner) ? OWNER_SEED.groups.map(g => g.slice()) : [];
+    DB.set('settings', S.settings).catch(() => {});
+  }
   try { S.clubMap = (await DB.get('clubMap')) || {}; } catch (e) {}
   try { const v = await DB.get('ui'); if (v && v.view) S.view = v.view; } catch (e) {}
 }
@@ -1084,6 +1088,7 @@ async function openSettings() {
       <div class="set-item"><div>백업 내보내기<div class="d">전체 기록 ${S.rounds.length}건을 JSON 파일로 저장</div></div><button class="btn" id="stExp" style="flex:none">내보내기</button></div>
       <div class="set-item"><div>백업에 이미지 포함<div class="d">${incImg ? `포함 — 백업 파일 약 ${Math.max(1, Math.round(imgKB / 1024))}MB 증가` : '제외 — 스코어 데이터만 저장 (가져올 때 기존 이미지는 유지)'}</div></div>
         <button class="me-tg ${incImg ? 'on' : ''}" id="stBkImg" style="flex:none">${incImg ? '포함' : '제외'}</button></div>
+      <div class="set-item"><div>동반자 이름 규칙<div class="d">박**, 홍**, 이** → 실명으로 바꾸는 규칙 ${(S.settings.groups || []).length}개</div></div><button class="btn" id="stGroups" style="flex:none">편집</button></div>
       <div class="set-item"><div>골프장 이름 정리<div class="d">저장된 기록의 골프장명을 전국 골프장 목록 이름으로 맞춥니다</div></div><button class="btn" id="stClubFix" style="flex:none">정리</button></div>
       <div class="set-item"><div>스코어카드 이미지<div class="d">${withImg.length}장 · 약 ${imgKB >= 1024 ? (imgKB / 1024).toFixed(1) + 'MB' : imgKB + 'KB'}${big ? ` · 큰 이미지 ${big}장` : ''}</div></div>${big ? '<button class="btn" id="stShrink" style="flex:none">줄이기</button>' : ''}</div>
       <div class="set-item"><div>백업 가져오기<div class="d">JSON 백업 파일에서 복원 (같은 기록은 덮어씀)</div></div><button class="btn" id="stImp" style="flex:none">가져오기</button></div>
@@ -1105,6 +1110,7 @@ async function openSettings() {
   const si = $('#stInstall'); if (si) si.onclick = () => INSTALL.install();
   $('#stBkImg').onclick = () => { S.settings.backupImages = !incImg; DB.set('settings', S.settings); openSettings(); };
   $('#stClubFix').onclick = openClubFix;
+  $('#stGroups').onclick = openGroups;
   const sh = $('#stShrink'); if (sh) sh.onclick = async () => {
     const pg = showProgress('이미지 줄이는 중'); let i = 0, before = imgKB;
     const targets = withImg.filter(r => dataUrlKB(r.image) > 80);
@@ -1152,6 +1158,64 @@ function openClubFix() {
     el.remove(); toast(`${n}건의 골프장 이름을 바꿨습니다`); openSettings();
   };
 }
+// first scorecard: confirm which recognised name is me (once), then remember it
+function askWhoAmI(r) {
+  return new Promise(done => {
+    let sel = Math.max(0, r.players.findIndex(p => p.me));
+    const el = document.createElement('div'); el.className = 'guide';
+    const draw = () => {
+      el.innerHTML = `<div class="gbox"><h3>이 스코어카드에서 나는 누구인가요?</h3>
+        <p style="font-size:14px;color:var(--muted);margin:0 0 12px">한 번만 확인하면 다음 카드부터 자동으로 찾아요.</p>
+        <div style="display:grid;gap:8px">${r.players.map((p, i) => `<button class="pl-pick ${i === sel ? 'on' : ''}" data-i="${i}"><span>${esc(p.name || `P${i + 1}`)}</span><b>${playerTotal(r, i) || ''}</b></button>`).join('')}</div>
+        <label style="display:block;font-size:12px;color:var(--muted);font-weight:600;margin:14px 0 4px">내 이름 (잘못 읽혔으면 고쳐주세요)</label>
+        <input type="text" id="wmName" value="${esc(r.players[sel]?.name || '')}">
+        <button class="btn primary" id="wmOk" style="width:100%;margin-top:12px;padding:13px">확인</button>
+        <button class="btn" id="wmLater" style="width:100%;margin-top:6px;background:none;color:var(--muted)">나중에</button></div>`;
+      el.querySelectorAll('.pl-pick').forEach(b => b.onclick = () => { sel = +b.dataset.i; draw(); });
+      el.querySelector('#wmOk').onclick = () => {
+        const nm = el.querySelector('#wmName').value.trim();
+        r.players.forEach((p, i) => p.me = i === sel);
+        if (nm) { r.players[sel].name = nm; S.settings.myName = nm; DB.set('settings', S.settings).catch(() => {}); }
+        if (!Array.isArray(S.settings.groups) || (!S.settings.groups.length && normName(nm) === normName(OWNER_SEED.owner))) { S.settings.groups = normName(nm) === normName(OWNER_SEED.owner) ? OWNER_SEED.groups.map(g => g.slice()) : []; DB.set('settings', S.settings).catch(() => {}); }
+        applyKnownGroups(r);
+        el.remove(); done();
+      };
+      el.querySelector('#wmLater').onclick = () => { el.remove(); done(); };
+    };
+    draw(); document.body.appendChild(el);
+  });
+}
+// settings: companion name rules
+function openGroups() {
+  const el = document.createElement('div'); el.className = 'guide';
+  const draw = () => {
+    const gs = S.settings.groups || [];
+    el.innerHTML = `<div class="gbox" style="max-height:85vh;overflow-y:auto"><h3>동반자 이름 규칙</h3>
+      <p style="font-size:13px;color:var(--muted);margin:0 0 10px;line-height:1.5">카드에 <b>박**, 홍**, 이**</b>처럼 성만 보일 때, 나를 뺀 동반자의 성이 규칙과 모두 같으면(순서 무관) 실명으로 바꿔요.</p>
+      ${gs.length ? gs.map((g, i) => `<div class="set-item"><span style="flex:1;font-weight:600">${g.map(esc).join(' · ')}<div class="d">${g.map(n => surOf(n) + '**').join(', ')}일 때</div></span><button class="x" data-del="${i}" aria-label="삭제" style="color:var(--warn);font-size:18px;padding:6px">✕</button></div>`).join('') : '<p style="color:var(--muted);font-size:14px">아직 규칙이 없어요.</p>'}
+      <label style="display:block;font-size:12px;color:var(--muted);font-weight:600;margin:14px 0 4px">새 규칙 — 동반자 실명을 쉼표로 구분 (예: 박한진, 홍승수, 이종승)</label>
+      <input type="text" id="grNew" placeholder="박한진, 홍승수, 이종승">
+      <button class="btn primary" id="grAdd" style="width:100%;margin-top:8px;padding:12px">규칙 추가</button>
+      <button class="btn" id="grApply" style="width:100%;margin-top:8px">기존 기록에도 적용</button>
+      <button class="btn close" style="width:100%;margin-top:8px">닫기</button></div>`;
+    el.querySelectorAll('[data-del]').forEach(b => b.onclick = () => { S.settings.groups.splice(+b.dataset.del, 1); DB.set('settings', S.settings); draw(); });
+    el.querySelector('#grAdd').onclick = () => {
+      const names = el.querySelector('#grNew').value.split(/[,，、\s]+/).map(x => x.trim()).filter(Boolean);
+      if (!names.length || names.length > 4) return toast('동반자 이름을 1~4명 입력하세요');
+      if (names.some(n => !/^[가-힣]{2,5}$/.test(n))) return toast('한글 실명(2~5자)으로 입력하세요');
+      const sur = names.map(surOf); if (new Set(sur).size !== sur.length) return toast('같은 성이 두 명이면 구분할 수 없어요');
+      const key = sur.slice().sort().join('');
+      S.settings.groups = (S.settings.groups || []).filter(g => !(g.length === names.length && g.map(surOf).sort().join('') === key)); // same surnames → replace
+      S.settings.groups.push(names); DB.set('settings', S.settings); toast('규칙을 추가했어요'); draw();
+    };
+    el.querySelector('#grApply').onclick = async () => {
+      let n = 0; for (const r of S.rounds) if (applyKnownGroups(r, true)) { await DB.put(r); n++; }
+      toast(n ? `기존 기록 ${n}건의 동반자 이름을 바꿨어요` : '바꿀 기록이 없어요'); render();
+    };
+  };
+  el.onclick = e => { if (e.target === el || e.target.closest('.close')) el.remove(); };
+  draw(); document.body.appendChild(el);
+}
 async function exportBackup() {
   const rounds = S.settings.backupImages ? S.rounds : S.rounds.map(r => ({ ...r, image: null }));
   const data = { app: 'golf-score-calendar', version: 1, exportedAt: new Date().toISOString(), images: !!S.settings.backupImages, settings: S.settings, clubMap: S.clubMap, rounds };
@@ -1177,6 +1241,7 @@ $('#importIn').onchange = async e => {
     }
     if (d.clubMap) { S.clubMap = Object.assign({}, d.clubMap, S.clubMap); await DB.set('clubMap', S.clubMap); }
     if (d.settings && !S.settings.myName && d.settings.myName) { S.settings.myName = d.settings.myName; await DB.set('settings', S.settings); }
+    if (d.settings && Array.isArray(d.settings.groups) && !(S.settings.groups || []).length) { S.settings.groups = d.settings.groups; await DB.set('settings', S.settings); }
     S.rounds = await DB.all(); toast(`${n}건을 가져왔습니다`); openSettings();
   } catch (err) { toast('가져오기 실패: ' + err.message, 4000); }
 };
@@ -1863,7 +1928,7 @@ const OCR = (() => {
       let best = 0; r.players.forEach((p, i) => { const sm = similarity(normName(p.name), mine); if (sm > best) { best = sm; mi = i; } });
       if (best >= 0.6) r.players[mi].name = myName; else mi = -1;
     }
-    if (mi < 0) { mi = 0; notes.push(mine ? `⚠️ 카드에서 "${myName}"을(를) 찾지 못해 첫 줄을 '나'로 표시했어요. 내 줄의 [나] 버튼을 눌러주세요.` : "⚠️ 내 이름이 설정되지 않아 첫 줄을 '나'로 표시했어요. 내 줄의 [나] 버튼을 누르고, ⚙︎ 설정에서 이름을 입력해 두세요."); }
+    if (mi < 0) { mi = 0; if (mine) notes.push(`⚠️ 카드에서 "${myName}"을(를) 찾지 못해 첫 줄을 '나'로 표시했어요. 내 줄의 [나] 버튼을 눌러주세요.`); }
     if (r.players[mi]) r.players[mi].me = true;
     applyKnownGroups(r);
     // club name: 1) remembered logo (fuzzy)  2) remembered course pair  3) logo text as read  4) single course name
@@ -1937,6 +2002,7 @@ $('#fileIn').onchange = async e => {
     if (!x) { pg = showProgress(n > 1 ? `스코어카드 인식 (${i + 1}/${n})` : '스코어카드 인식'); x = await jobs[i]; pg.close(); pg = null; }
     const dup = x.r.time && S.rounds.find(o => o.date === x.r.date && o.time === x.r.time);
     if (dup) { x.opts.notes = x.opts.notes || []; x.opts.notes.unshift(`⚠️ ${x.r.date} ${x.r.time} 기록이 이미 있습니다. 같은 카드라면 ${i + 1 < n ? '건너뛰기' : '취소'}를 누르세요.`); x.opts.notes.ok = false; }
+    if (!S.settings.myName && x.r.players.some(p => p.name)) await askWhoAmI(x.r);
     const result = await openEditor(x.r, { ...x.opts, tag: n > 1 ? ` (${i + 1}/${n})` : '', remaining: n - i - 1 });
     if (result === 'saved') saved++;
   }
@@ -2065,7 +2131,7 @@ const ONBOARD = (() => {
     { art: scan, h: '＋ 버튼으로 사진 추가', p: ['오른쪽 아래 <b>＋</b> → <b>스코어카드 이미지로 추가</b>', '여러 장을 한 번에 골라도 돼요. 날짜·홀별 타수를 자동으로 읽어요.'] },
     { art: check, h: '확인하고 저장', p: ['카드 합계와 맞으면 <b>✓</b>, 다르면 빨간색으로 알려줘요.', '골프장은 <b>후보 버튼</b>을 누르거나 입력하고, 틀린 칸만 고친 뒤 저장하세요.'] },
     { art: views, h: '기록 보기와 백업', p: ['<b>월간·일간·통계</b>로 나의 골프 기록을 확인하세요.', '폰을 바꿀 때를 대비해 <b>⚙︎ 설정 → 백업 내보내기</b>를 가끔 해두세요.'] },
-    ...(help ? [{ faq: true }] : [{ name: true }]),
+    ...(help ? [{ faq: true }] : []),
   ];
   const FAQ = [
     ['데이터는 어디에 저장되나요?', '이 기기의 브라우저 저장소에만 저장됩니다. 같은 주소를 쓰는 다른 사람에게 보이지 않아요.'],
@@ -2078,14 +2144,7 @@ const ONBOARD = (() => {
     const list = slides(help), n = list.length;
     const el = document.createElement('div'); el.className = 'ob';
     el.innerHTML = `<div class="ob-top"><span class="step" id="obStep"></span><button id="obSkip">${help ? '닫기' : '건너뛰기'}</button></div>
-      <div class="ob-track" id="obTrack">${list.map((s, i) => s.name
-        ? `<section class="ob-slide"><div class="ob-art"><div class="mk"><div class="mk-tbl"><div class="h"><span>이름</span><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>합</span></div>
-            <div class="me"><span>★ 나</span><span>0</span><span>1</span><span>0</span><span>2</span><span>-1</span><em style="opacity:1">45</em></div>
-            <div><span>박**</span><span>1</span><span>0</span><span>0</span><span>1</span><span>0</span><em style="opacity:1;color:var(--muted)">40</em></div>
-            <div><span>이**</span><span>0</span><span>2</span><span>1</span><span>0</span><span>1</span><em style="opacity:1;color:var(--muted)">48</em></div></div></div></div>
-            <h2>내 이름을 알려주세요</h2><p>스코어카드에서 <b>내 줄</b>을 찾는 데 써요.<br>카드에 적힌 이름 그대로 입력하세요.</p>
-            <input type="text" id="obName" placeholder="예: 홍길동" value="${esc(S.settings.myName || '')}" style="max-width:280px;text-align:center;font-size:18px;padding:12px;margin-top:6px" autocomplete="name"></section>`
-        : s.faq
+      <div class="ob-track" id="obTrack">${list.map((s, i) => s.faq
         ? `<section class="ob-slide"><h2 style="margin-top:12px">자주 묻는 질문</h2><div class="ob-faq">${FAQ.map(([q, a]) => `<details><summary>${q}</summary><p>${a}</p></details>`).join('')}</div></section>`
         : `<section class="ob-slide" data-i="${i}"><div class="ob-art">${s.art()}</div><h2>${s.h}</h2>${s.p.map(t => `<p>${t}</p>`).join('')}
             ${s.install ? `<button class="btn primary" id="obInstall" style="flex:none;margin-top:8px;padding:12px 22px">📲 홈 화면에 추가</button>` : ''}</section>`).join('')}</div>
@@ -2104,8 +2163,6 @@ const ONBOARD = (() => {
     const go = i => track.scrollTo({ left: i * track.clientWidth, behavior: 'smooth' });
     track.addEventListener('scroll', () => show(Math.round(track.scrollLeft / Math.max(1, track.clientWidth))), { passive: true });
     const close = () => {
-      const nm = el.querySelector('#obName'); const v = nm ? nm.value.trim() : '';
-      if (v) { S.settings.myName = v; DB.set('settings', S.settings).catch(() => {}); }
       markSeen(); el.remove(); render(); OCR.warmup();
     };
     next.onclick = () => cur < n - 1 ? go(cur + 1) : close();
