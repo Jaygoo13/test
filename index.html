@@ -310,6 +310,20 @@ function shrinkImage(img) {
 }
 const dataUrlKB = u => u ? Math.round(u.length * 0.75 / 1024) : 0;
 const loadDataUrl = u => new Promise((ok, no) => { const i = new Image(); i.onload = () => ok(i); i.onerror = no; i.src = u; });
+// 고정 동반자 그룹: 나를 뺀 동반자들의 성(첫 글자)이 그룹과 정확히 같으면(순서 무관) 실명으로 바꿉니다.
+// 예) 박**, 홍**, 이** → 박한진, 홍승수, 이종승
+const KNOWN_GROUPS = [
+  ['박한진', '홍승수', '이종승'],
+  ['박한진', '권용환', '이종승'],
+];
+function applyKnownGroups(r) {
+  const others = r.players.filter(p => !p.me);
+  const sur = others.map(p => (String(p.name || '').match(/[가-힣]/) || [''])[0]);
+  if (!others.length || sur.some(c => !c)) return;
+  const key = sur.slice().sort().join('');
+  const g = KNOWN_GROUPS.find(g => g.length === others.length && g.map(n => n[0]).sort().join('') === key);
+  if (g) others.forEach((p, i) => { p.name = g.find(n => n[0] === sur[i]); });
+}
 const normName = s => String(s || '').replace(/[\s*＊·.]/g, '').toLowerCase();
 function toast(msg, ms = 2400) {
   const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg;
@@ -1595,6 +1609,7 @@ const OCR = (() => {
     }
     if (mi < 0) mi = 0;
     if (r.players[mi]) r.players[mi].me = true;
+    applyKnownGroups(r);
     // club name: 1) remembered logo (fuzzy)  2) remembered course pair  3) logo text as read  4) single course name
     const key = r.courses.map(c => c.name).filter(Boolean).join('|');
     let clubSrc = '';
