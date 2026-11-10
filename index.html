@@ -494,7 +494,7 @@ async function thumbInfo(id) { // { url, video } for grid tiles (video → poste
   return { url: PHOTO_URLS.get(k) || null, video };
 }
 const MAX_VIDEO_SEC = 10;
-const APP_VERSION = '2026.11.10-v12';
+const APP_VERSION = '2026.11.10-v13';
 // video poster: a frame near the start, ≤ 480px
 // video length straight from the MP4/MOV header (moov → mvhd); works even when the browser won't preload the video (iPhone Safari)
 async function movDuration(file) {
@@ -643,7 +643,7 @@ function matchClubs(cands) {
       strongC.add(ci);
       for (const e of CLUB_IDX) {
         if (e.sk.length < 3) continue;
-        let sc = similarity(k, e.sk) * 0.95; // sound match is a little less certain than a Korean text match
+        let sc = similarity(k, e.sk) * 0.95 * (k.length >= 5 ? 1 : k.length === 4 ? 0.95 : 0.9); // sound match is less certain than Korean text, short fragments even more
         sc *= c.w || 1; add(e.name, sc, ci);
       }
     }
@@ -651,7 +651,7 @@ function matchClubs(cands) {
   // best clue + 30% of other clues agreeing (e.g. Korean "안성" + English "GOLFZON COUNTY" → 골프존카운티 안성H)
   return [...best.entries()].map(([name, per]) => {
     const ent = [...per.entries()].sort((a, b) => b[1] - a[1]), v = ent.map(e => e[1]);
-    return { name, strong: strongC.has(ent[0][0]) || v.length > 1, score: v[0] + 0.3 * v.slice(1).filter(x => x >= 0.55).reduce((a, b) => a + b, 0) };
+    return { name, strong: strongC.has(ent[0][0]) || v.length > 1, score: v[0] + 0.3 * v.slice(1).filter(x => x >= 0.7).reduce((a, b) => a + b, 0) };
   }).sort((a, b) => b.score - a.score);
 }
 
@@ -2211,17 +2211,56 @@ const OCR = (() => {
     return { top, logo: club, clubCands, sections: out };
   }
 
+  // how much of a scorecard an analysis found: player rows in sections that have a PAR band and 9 holes
+  const scoreA = A => !A ? 0 : A.sections.reduce((t, s) => t + (s.P && s.holes.length >= 9 ? s.rows.length + 1 : 0), 0);
+  // horizontal spans of long blue runs (table header bars), grouped; biggest groups first
+  function blueSpans(img) {
+    const W = 600, H = Math.round(img.naturalHeight * W / img.naturalWidth);
+    const c = document.createElement('canvas'); c.width = W; c.height = H;
+    const x = c.getContext('2d', { willReadFrequently: true }); x.drawImage(img, 0, 0, W, H);
+    const d = x.getImageData(0, 0, W, H).data, runs = [];
+    for (let y = 0; y < H; y++) {
+      let best = [0, -1], s0 = -1;
+      for (let i = 0; i <= W; i++) {
+        const k = (y * W + i) * 4, blue = i < W && d[k + 2] > d[k] + 45 && d[k + 2] > 100;
+        if (blue && s0 < 0) s0 = i;
+        if (!blue && s0 >= 0) { if (i - s0 > best[1] - best[0]) best = [s0, i]; s0 = -1; }
+      }
+      if (best[1] - best[0] >= W * 0.25 && best[1] - best[0] < W * 0.9) runs.push(best);
+    }
+    const groups = [];
+    for (const r of runs) {
+      const g = groups.find(g => Math.abs(g.x0 - r[0]) < W * 0.03 && Math.abs(g.x1 - r[1]) < W * 0.03);
+      if (g) g.n++; else groups.push({ x0: r[0], x1: r[1], n: 1 });
+    }
+    const k = img.naturalWidth / W, m = W * 0.015;
+    return groups.filter(g => g.n >= 8).sort((a, b) => b.n - a.n)
+      .map(g => ({ x0: Math.max(0, Math.round((g.x0 - m) * k)), x1: Math.min(img.naturalWidth, Math.round((g.x1 + m) * k)) }));
+  }
+  function cropCanvas(img, r) {
+    const c = document.createElement('canvas'); c.width = r.x1 - r.x0; c.height = img.naturalHeight;
+    c.getContext('2d').drawImage(img, r.x0, 0, c.width, c.height, 0, 0, c.width, c.height);
+    c.naturalWidth = c.width; c.naturalHeight = c.height; // let it stand in for an <img>
+    return c;
+  }
   async function recognize(file, progress) {
     progress('이미지 분석 중…', 0.02);
     const img = await loadImage(file);
     const image = shrinkImage(img);
     progress('인식 엔진 준비 중… (첫 사용 시 다운로드)', 0.05);
     await prepare((m, f) => progress(m, 0.05 + (f || 0) * 0.15));
-    let A = null;
+    let A = null, src = img;
     try { A = analyze(img); } catch (e) { A = null; }
+    // cards with a photo/ad panel beside the table: also try crops to the table's blue header bars, keep the best
+    for (const c of blueSpans(img)) {
+      const cv = cropCanvas(img, c); let a = null;
+      try { a = analyze(cv); } catch (e) {}
+      if (scoreA(a) > scoreA(A)) { A = a; src = cv; }
+    }
+    if (A && !scoreA(A)) A = null;
     // SMARTSCORE-style cards (blue header + PAR band) use the tuned reader; everything else the generic one
     if (!A || !A.sections.some(s => s.P)) {
-      const g = await recognizeGeneric(img, progress);
+      const g = await recognizeGeneric(src, progress);
       if (g) return { image, ...g };
       if (!A) return { image, error: '스코어 표를 찾지 못했습니다' };
     }
@@ -2353,7 +2392,7 @@ const OCR = (() => {
       try { localStorage.setItem('ocrWarm', '1'); } catch (e) {}
     } catch (e) { /* try again next launch */ } finally { warming = false; }
   }
-  return { prepare, recognize, toRound, warmup, _dbg: { analyze, cellCanvas, readNum, loadImage, prepGeneric, bandsOf, hasRun, headerCols, recognizeGeneric, w: () => numW, w8: () => numW8 } };
+  return { prepare, recognize, toRound, warmup, _dbg: { blueSpans, cropCanvas, analyze, cellCanvas, readNum, loadImage, prepGeneric, bandsOf, hasRun, headerCols, recognizeGeneric, w: () => numW, w8: () => numW8 } };
 })();
 
 async function recognizeFile(f, progress) {
