@@ -493,7 +493,7 @@ async function thumbInfo(id) { // { url, video } for grid tiles (video → poste
   return { url: PHOTO_URLS.get(k) || null, video };
 }
 const MAX_VIDEO_SEC = 10;
-const APP_VERSION = '2026.11.10-v9';
+const APP_VERSION = '2026.11.10-v10';
 // video poster: a frame near the start, ≤ 480px
 // video length straight from the MP4/MOV header (moov → mvhd); works even when the browser won't preload the video (iPhone Safari)
 async function movDuration(file) {
@@ -1460,40 +1460,64 @@ function openGroups() {
 /* backup: small JSON without media; with "include images" on, one ZIP (data.json + media/ files, stored uncompressed) */
 const CRC_T = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
 function crc32(u8) { let c = 0xFFFFFFFF; for (let i = 0; i < u8.length; i++) c = CRC_T[(c ^ u8[i]) & 255] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; }
-async function makeZip(files, progress) { // files: [{ name, blob }]
-  const enc = new TextEncoder(), parts = [], central = []; let off = 0;
+// one contiguous buffer: iPhone corrupted ZIPs assembled from many Blob parts when saving through the share sheet
+async function makeZip(files, progress) { // files: [{ name, blob }] → Blob (stored, uncompressed)
+  const enc = new TextEncoder(), items = [];
+  let total = 22;
   for (const [i, f] of files.entries()) {
-    const name = enc.encode(f.name), size = f.blob.size, crc = crc32(new Uint8Array(await f.blob.arrayBuffer()));
-    const h = new DataView(new ArrayBuffer(30));
-    h.setUint32(0, 0x04034b50, true); h.setUint16(4, 20, true); h.setUint16(6, 0x0800, true); h.setUint16(8, 0, true);
-    h.setUint32(14, crc, true); h.setUint32(18, size, true); h.setUint32(22, size, true); h.setUint16(26, name.length, true);
-    parts.push(h.buffer, name, f.blob);
-    const c = new DataView(new ArrayBuffer(46));
-    c.setUint32(0, 0x02014b50, true); c.setUint16(4, 20, true); c.setUint16(6, 20, true); c.setUint16(8, 0x0800, true);
-    c.setUint32(16, crc, true); c.setUint32(20, size, true); c.setUint32(24, size, true); c.setUint16(28, name.length, true); c.setUint32(42, off, true);
-    central.push(c.buffer, name);
-    off += 30 + name.length + size;
-    if (progress) progress(`파일 묶는 중 ${i + 1}/${files.length}`, (i + 1) / files.length);
+    const data = new Uint8Array(await f.blob.arrayBuffer());
+    if (data.length !== f.blob.size) throw new Error(`${f.name}을(를) 읽지 못했습니다`);
+    const name = enc.encode(f.name);
+    items.push({ name, data, crc: crc32(data) });
+    total += 30 + name.length + data.length + 46 + name.length;
+    if (progress) progress(`파일 읽는 중 ${i + 1}/${files.length}`, (i + 1) / files.length * 0.8);
   }
-  const cdSize = central.reduce((a, b) => a + b.byteLength, 0), e = new DataView(new ArrayBuffer(22));
-  e.setUint32(0, 0x06054b50, true); e.setUint16(8, files.length, true); e.setUint16(10, files.length, true); e.setUint32(12, cdSize, true); e.setUint32(16, off, true);
-  return new Blob([...parts, ...central, e.buffer], { type: 'application/zip' });
+  const out = new Uint8Array(total), dv = new DataView(out.buffer);
+  let p = 0; const offs = [];
+  for (const it of items) {
+    offs.push(p);
+    dv.setUint32(p, 0x04034b50, true); dv.setUint16(p + 4, 20, true); dv.setUint16(p + 6, 0x0800, true);
+    dv.setUint32(p + 14, it.crc, true); dv.setUint32(p + 18, it.data.length, true); dv.setUint32(p + 22, it.data.length, true); dv.setUint16(p + 26, it.name.length, true);
+    out.set(it.name, p + 30); out.set(it.data, p + 30 + it.name.length); p += 30 + it.name.length + it.data.length;
+  }
+  const cdStart = p;
+  items.forEach((it, k) => {
+    dv.setUint32(p, 0x02014b50, true); dv.setUint16(p + 4, 20, true); dv.setUint16(p + 6, 20, true); dv.setUint16(p + 8, 0x0800, true);
+    dv.setUint32(p + 16, it.crc, true); dv.setUint32(p + 20, it.data.length, true); dv.setUint32(p + 24, it.data.length, true); dv.setUint16(p + 28, it.name.length, true); dv.setUint32(p + 42, offs[k], true);
+    out.set(it.name, p + 46); p += 46 + it.name.length;
+  });
+  dv.setUint32(p, 0x06054b50, true); dv.setUint16(p + 8, items.length, true); dv.setUint16(p + 10, items.length, true); dv.setUint32(p + 12, p - cdStart, true); dv.setUint32(p + 16, cdStart, true);
+  if (progress) progress('파일 저장 준비', 1);
+  return new Blob([out], { type: 'application/zip' });
 }
-async function readZip(file) { // → Map(name → Blob)
-  const tailLen = Math.min(file.size, 65557), tail = new DataView(await file.slice(file.size - tailLen).arrayBuffer());
-  let p = tailLen - 22; while (p >= 0 && tail.getUint32(p, true) !== 0x06054b50) p--;
-  if (p < 0) throw new Error('ZIP 파일을 읽을 수 없습니다');
-  const n = tail.getUint16(p + 10, true), cdSize = tail.getUint32(p + 12, true), cdOff = tail.getUint32(p + 16, true);
-  const cd = new DataView(await file.slice(cdOff, cdOff + cdSize).arrayBuffer()), dec = new TextDecoder(), out = new Map();
-  for (let i = 0, q = 0; i < n; i++) {
-    const method = cd.getUint16(q + 10, true), size = cd.getUint32(q + 20, true), nl = cd.getUint16(q + 28, true), el = cd.getUint16(q + 30, true), cl = cd.getUint16(q + 32, true), lo = cd.getUint32(q + 42, true);
-    const name = dec.decode(new Uint8Array(cd.buffer, cd.byteOffset + q + 46, nl));
+// reads our stored ZIPs; every entry is CRC-checked, and if the recorded position is wrong (a damaged save)
+// the file is searched for an intact copy. → { files: Map(name → Blob), bad: [names] }
+async function readZip(file) {
+  const b = new Uint8Array(await file.arrayBuffer()), dv = new DataView(b.buffer), dec = new TextDecoder();
+  let e = b.length - 22; while (e >= 0 && dv.getUint32(e, true) !== 0x06054b50) e--;
+  if (e < 0) throw new Error('ZIP 파일을 읽을 수 없습니다');
+  const n = dv.getUint16(e + 10, true), cdSize = dv.getUint32(e + 12, true), cdOff = dv.getUint32(e + 16, true);
+  const cdPos = dv.getUint32(e - cdSize, true) === 0x02014b50 ? e - cdSize : cdOff, shift = cdPos - cdOff;
+  const files = new Map(), bad = [];
+  const headers = []; // every local header position, for the fallback search
+  for (let i = 0; i + 4 <= b.length; i++) if (b[i] === 0x50 && b[i + 1] === 0x4b && b[i + 2] === 3 && b[i + 3] === 4) headers.push(i);
+  const tryAt = (o, name, crc, size) => {
+    if (o < 0 || o + 30 > b.length || dv.getUint32(o, true) !== 0x04034b50) return null;
+    const nl = dv.getUint16(o + 26, true), el = dv.getUint16(o + 28, true);
+    if (dec.decode(b.subarray(o + 30, o + 30 + nl)) !== name) return null;
+    const st = o + 30 + nl + el; if (st + size > b.length) return null;
+    const data = b.subarray(st, st + size); return crc32(data) === crc ? data : null;
+  };
+  for (let i = 0, q = cdPos; i < n; i++) {
+    const method = dv.getUint16(q + 10, true), crc = dv.getUint32(q + 16, true), size = dv.getUint32(q + 20, true);
+    const nl = dv.getUint16(q + 28, true), el = dv.getUint16(q + 30, true), cl = dv.getUint16(q + 32, true), lo = dv.getUint32(q + 42, true);
+    const name = dec.decode(b.subarray(q + 46, q + 46 + nl)); q += 46 + nl + el + cl;
     if (method !== 0) throw new Error('지원하지 않는 ZIP 형식입니다 (골력에서 만든 백업만 가져올 수 있어요)');
-    const lh = new DataView(await file.slice(lo, lo + 30).arrayBuffer()), start = lo + 30 + lh.getUint16(26, true) + lh.getUint16(28, true);
-    out.set(name, file.slice(start, start + size));
-    q += 46 + nl + el + cl;
+    let data = tryAt(lo + shift, name, crc, size) || tryAt(lo, name, crc, size);
+    for (let k = 0; !data && k < headers.length; k++) data = tryAt(headers[k], name, crc, size);
+    if (data) files.set(name, new Blob([data.slice()])); else bad.push(name);
   }
-  return out;
+  return { files, bad };
 }
 const extOf = t => ({ 'image/jpeg': 'jpg', 'image/png': 'png', 'video/mp4': 'mp4', 'video/quicktime': 'mov', 'video/webm': 'webm' }[t] || (t.split('/')[1] || 'bin'));
 const typeOf = name => ({ jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', mp4: 'video/mp4', mov: 'video/quicktime', webm: 'video/webm' }[name.split('.').pop().toLowerCase()] || 'application/octet-stream');
@@ -1532,7 +1556,8 @@ $('#importIn').onchange = async e => {
   try {
     const head = new Uint8Array(await f.slice(0, 2).arrayBuffer());
     let d, zip = null;
-    if (head[0] === 0x50 && head[1] === 0x4b) { zip = await readZip(f); const j = zip.get('data.json'); if (!j) throw new Error('백업 파일 형식이 아닙니다'); d = JSON.parse(await j.text()); }
+    let bad = [];
+    if (head[0] === 0x50 && head[1] === 0x4b) { const z = await readZip(f); zip = z.files; bad = z.bad; const j = zip.get('data.json'); if (!j) throw new Error('백업 파일이 손상되어 기록을 읽을 수 없습니다'); d = JSON.parse(await j.text()); }
     else d = JSON.parse(await f.text());
     if (!d || !Array.isArray(d.rounds)) throw new Error('백업 파일 형식이 아닙니다');
     const hasMedia = !!zip || Array.isArray(d.photos);
@@ -1544,8 +1569,9 @@ $('#importIn').onchange = async e => {
       if (!hasMedia && old && (old.photos || []).length) r.photos = old.photos; // media-less backup: keep this phone's photos/videos
       await DB.put(r); n++;
     }
+    let got = 0;
     if (zip && Array.isArray(d.media)) for (const [i, m] of d.media.entries()) {
-      const b = zip.get(m.file); if (!b) continue;
+      const b = zip.get(m.file); if (!b) continue; got++;
       const pb = m.poster && zip.get(m.poster);
       await DB.photoPut({ id: m.id, roundId: m.roundId, at: m.at, type: m.type, dur: m.dur, blob: new Blob([b], { type: typeOf(m.file) }), poster: pb ? new Blob([pb], { type: 'image/jpeg' }) : null });
       pg.set(`사진·영상 ${i + 1}/${d.media.length}`, (i + 1) / d.media.length);
@@ -1555,7 +1581,13 @@ $('#importIn').onchange = async e => {
     if (d.settings && !S.settings.myName && d.settings.myName) { S.settings.myName = d.settings.myName; await DB.set('settings', S.settings); }
     if (d.settings && Array.isArray(d.settings.groups) && !(S.settings.groups || []).length) { S.settings.groups = d.settings.groups; await DB.set('settings', S.settings); }
     PHOTO_URLS.clear(); S.rounds = await DB.all(); pg.close();
-    toast(`${n}건${zip && d.media ? `, 사진·영상 ${d.media.length}개` : ''}를 가져왔습니다`, 3000); openSettings();
+    const lost = zip && d.media ? d.media.length - got : 0;
+    toast(`${n}건${zip && d.media ? `, 사진·영상 ${got}개` : ''}를 가져왔습니다${lost ? ` (백업 파일이 손상되어 ${lost}개는 복원하지 못했어요)` : ''}`, lost ? 6000 : 3000);
+    if (lost) for (const r of S.rounds) { // drop references to media that couldn't be restored and aren't on this phone
+      const keep = []; for (const id of r.photos || []) if (await DB.photoGet(id).catch(() => null)) keep.push(id);
+      if (keep.length !== (r.photos || []).length) { r.photos = keep; await DB.put(r); }
+    }
+    openSettings();
   } catch (err) { pg.close(); toast('가져오기 실패: ' + err.message, 4000); }
 };
 
