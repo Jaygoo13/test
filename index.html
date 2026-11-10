@@ -319,6 +319,7 @@ table.ed td.t{min-width:40px;text-align:center;font-weight:800;font-size:14px}
 .ph-grid .ph.vid{background-color:#222}
 .ph-grid .ph.vid::after{content:"▶";position:absolute;inset:0;pointer-events:none;display:grid;place-items:center;color:#fff;font-size:22px;text-shadow:0 1px 6px rgba(0,0,0,.6)}
 .pv-img video{max-width:100%;max-height:100%;background:#000}
+.pv-err{color:#ddd;text-align:center;font-size:15px;line-height:1.6;padding:24px}
 .ph-x{position:absolute;top:2px;right:2px;z-index:2;width:34px;height:34px;border-radius:50%;background:rgba(0,0,0,.65);color:#fff;font-size:15px;font-weight:700;display:grid;place-items:center;border:2px solid rgba(255,255,255,.85)}
 .pv{position:fixed;inset:0;z-index:96;background:#000;display:flex;flex-direction:column}
 .pv-top{display:flex;justify-content:space-between;align-items:center;color:#fff;padding:calc(10px + env(safe-area-inset-top)) 14px 10px;font-size:14px}
@@ -493,7 +494,7 @@ async function thumbInfo(id) { // { url, video } for grid tiles (video → poste
   return { url: PHOTO_URLS.get(k) || null, video };
 }
 const MAX_VIDEO_SEC = 10;
-const APP_VERSION = '2026.11.10-v10';
+const APP_VERSION = '2026.11.10-v11';
 // video poster: a frame near the start, ≤ 480px
 // video length straight from the MP4/MOV header (moov → mvhd); works even when the browser won't preload the video (iPhone Safari)
 async function movDuration(file) {
@@ -554,7 +555,11 @@ function openPhotoViewer(ids, start, onDelete) {
   const show = async () => {
     stop(); el.querySelector('#pvN').textContent = `${i + 1} / ${ids.length}`;
     const u = await photoUrl(ids[i]) || '', video = MEDIA_META.get(ids[i])?.video;
-    box.innerHTML = video ? `<video src="${u}" controls playsinline autoplay></video>` : `<img src="${u}" alt="">`;
+    box.innerHTML = !u ? '<p class="pv-err">이 사진·영상의 데이터를 읽을 수 없어요.<br>백업 파일에서 다시 가져와 주세요.</p>'
+      : video ? `<video src="${u}" controls playsinline autoplay preload="auto"></video>` : `<img src="${u}" alt="">`;
+    const v = box.querySelector('video'), im = box.querySelector('img');
+    const fail = () => { box.innerHTML = '<p class="pv-err">이 사진·영상을 재생할 수 없어요.<br>데이터가 손상되었을 수 있어요. 백업 파일에서 다시 가져와 주세요.</p>'; };
+    if (v) v.onerror = fail; if (im) im.onerror = fail;
     el.querySelector('#pvL').style.visibility = i > 0 ? '' : 'hidden'; el.querySelector('#pvR').style.visibility = i < ids.length - 1 ? '' : 'hidden';
   };
   const go = d => { const j = i + d; if (j >= 0 && j < ids.length) { i = j; show(); } };
@@ -688,6 +693,33 @@ function diffClass(d) {
 const fmtDiff = d => d > 0 ? `+${d}` : d === 0 ? 'E' : String(d);
 
 /* ================= storage (IndexedDB) ================= */
+async function toStored(p) {
+  const o = { ...p };
+  if (o.blob) { o.buf = await o.blob.arrayBuffer(); o.mime = o.blob.type || (o.type === 'video' ? 'video/mp4' : 'image/jpeg'); delete o.blob; }
+  if (o.poster) { o.posterBuf = await o.poster.arrayBuffer(); delete o.poster; }
+  return o;
+}
+function fromStored(o) {
+  if (!o) return o;
+  const r = { ...o };
+  if (r.buf) r.blob = new Blob([r.buf], { type: r.mime || '' });
+  if (r.posterBuf) r.poster = new Blob([r.posterBuf], { type: 'image/jpeg' });
+  delete r.buf; delete r.posterBuf;
+  return r;
+}
+// one-time: rewrite media still stored as Blobs into ArrayBuffers (those Safari can still read)
+async function migrateMedia() {
+  let raw = []; try { raw = await DB.photoAllRaw(); } catch (e) { return; }
+  for (const o of raw) {
+    if (o.buf || !o.blob) continue;
+    try {
+      const buf = await o.blob.arrayBuffer(); if (!buf.byteLength) continue;
+      const fixed = { ...o, buf, mime: o.blob.type || (o.type === 'video' ? 'video/mp4' : 'image/jpeg') }; delete fixed.blob;
+      if (o.poster) { try { fixed.posterBuf = await o.poster.arrayBuffer(); } catch (e) {} delete fixed.poster; }
+      await new Promise((ok, no) => { indexedDB.open('golf-score-calendar').onsuccess = ev => { const t = ev.target.result.transaction('photos', 'readwrite'); t.objectStore('photos').put(fixed); t.oncomplete = ok; t.onerror = () => no(t.error); }; });
+    } catch (e) { /* unreadable: nothing to save */ }
+  }
+}
 const DB = (() => {
   let dbp;
   const open = () => dbp || (dbp = new Promise((res, rej) => {
@@ -713,10 +745,12 @@ const DB = (() => {
     get: k => tx('kv', 'readonly', s => s.get(k)),
     set: (k, v) => tx('kv', 'readwrite', s => s.put(v, k)),
     // diary photos (Blobs) live in their own store so rounds stay small
-    photoPut: p => tx('photos', 'readwrite', s => s.put(p)),
-    photoGet: id => tx('photos', 'readonly', s => s.get(id)),
+    // media bytes are stored as ArrayBuffers: Safari can lose Blobs kept in IndexedDB (unreadable after the app restarts)
+    photoPut: async p => { const o = await toStored(p); return tx('photos', 'readwrite', s => s.put(o)); },
+    photoGet: async id => fromStored(await tx('photos', 'readonly', s => s.get(id))),
     photoDel: id => tx('photos', 'readwrite', s => s.delete(id)),
-    photoAll: () => tx('photos', 'readonly', s => s.getAll()),
+    photoAll: async () => (await tx('photos', 'readonly', s => s.getAll())).map(fromStored),
+    photoAllRaw: () => tx('photos', 'readonly', s => s.getAll()),
     photoClear: () => tx('photos', 'readwrite', s => s.clear()),
   };
 })();
@@ -2566,6 +2600,7 @@ function installGate() {
   INSTALL.showBar();
   if (INSTALL.mustInstall()) INSTALL.drawGate(); // mobile browser tab: install first
   else { ONBOARD.maybeAuto(); setTimeout(() => { if (!document.querySelector('.ob')) OCR.warmup(); }, 4000); }
+  migrateMedia().then(() => { if (S.view === 'day') render(); });
 })();
 window.GolfApp = { S, OCR, DB };
 </script>
