@@ -494,12 +494,41 @@ async function thumbInfo(id) { // { url, video } for grid tiles (video → poste
 }
 const MAX_VIDEO_SEC = 10;
 // video poster: a frame near the start, ≤ 480px
+// video length straight from the MP4/MOV header (moov → mvhd); works even when the browser won't preload the video (iPhone Safari)
+async function movDuration(file) {
+  try {
+    const rd = async (o, n) => new DataView(await file.slice(o, o + n).arrayBuffer());
+    const fourcc = (d, p) => String.fromCharCode(d.getUint8(p), d.getUint8(p + 1), d.getUint8(p + 2), d.getUint8(p + 3));
+    for (let off = 0, guard = 0; off + 8 <= file.size && guard < 200; guard++) {
+      const h = await rd(off, 16); let len = h.getUint32(0), hdr = 8; const type = fourcc(h, 4);
+      if (len === 1) { len = Number(h.getBigUint64(8)); hdr = 16; } else if (len === 0) len = file.size - off;
+      if (len < 8) return 0;
+      if (type === 'moov') {
+        const mv = await rd(off + hdr, Math.min(len - hdr, 16 * 1048576));
+        for (let p = 0; p + 8 <= mv.byteLength;) {
+          const l = mv.getUint32(p);
+          if (fourcc(mv, p + 4) === 'mvhd') {
+            const v1 = mv.getUint8(p + 8) === 1, ts = mv.getUint32(p + (v1 ? 28 : 20)), du = v1 ? Number(mv.getBigUint64(p + 32)) : mv.getUint32(p + 24);
+            return ts ? du / ts : 0;
+          }
+          if (l < 8) break; p += l;
+        }
+        return 0;
+      }
+      off += len;
+    }
+  } catch (e) {}
+  return 0;
+}
 function makePoster(file) {
   return new Promise(ok => {
     const v = document.createElement('video'), url = URL.createObjectURL(file);
     let done = false; const fin = b => { if (done) return; done = true; URL.revokeObjectURL(url); ok(b); };
-    v.muted = true; v.playsInline = true; v.preload = 'auto'; v.src = url;
-    v.onloadedmetadata = () => { if (isFinite(v.duration) && v.duration > MAX_VIDEO_SEC + 0.5) fin({ poster: null, dur: v.duration }); };
+    v.muted = true; v.playsInline = true; v.setAttribute('playsinline', ''); v.preload = 'auto'; v.src = url; v.load();
+    v.onloadedmetadata = () => {
+      if (isFinite(v.duration) && v.duration > MAX_VIDEO_SEC + 0.5) return fin({ poster: null, dur: v.duration });
+      const pr = v.play && v.play(); if (pr && pr.then) pr.then(() => v.pause()).catch(() => {}); // iPhone: decode a frame
+    };
     v.onloadeddata = () => { try { v.currentTime = Math.min(0.5, (v.duration || 1) / 3); } catch (e) { fin({ poster: null, dur: v.duration }); } };
     v.onseeked = () => {
       const k = Math.min(1, 480 / Math.max(v.videoWidth || 1, v.videoHeight || 1)), c = document.createElement('canvas');
@@ -507,7 +536,7 @@ function makePoster(file) {
       try { c.getContext('2d').drawImage(v, 0, 0, c.width, c.height); c.toBlob(b => fin({ poster: b, dur: v.duration }), 'image/jpeg', 0.7); } catch (e) { fin({ poster: null, dur: v.duration }); }
     };
     v.onerror = () => fin({ poster: null, dur: 0 });
-    setTimeout(() => fin({ poster: null, dur: 0 }), 6000);
+    setTimeout(() => fin({ poster: null, dur: isFinite(v.duration) ? v.duration : 0 }), 5000);
   });
 }
 const blobToDataUrl = b => new Promise(ok => { const fr = new FileReader(); fr.onload = () => ok(fr.result); fr.readAsDataURL(b); });
@@ -1132,9 +1161,16 @@ $('#photoIn').onchange = async e => {
       if (f.type.startsWith('video/')) {
         const mb = f.size / 1048576;
         if (mb > 200) { toast(`영상이 너무 커요 (${Math.round(mb)}MB). ${MAX_VIDEO_SEC}초 이내로 잘라서 올려주세요`, 4000); continue; }
-        const { poster, dur } = await makePoster(f);
-        if (!(dur > 0)) { toast('영상 길이를 확인할 수 없어 올리지 못했어요', 3500); continue; }
-        if (dur > MAX_VIDEO_SEC + 0.5) { toast(`영상은 ${MAX_VIDEO_SEC}초 이내만 올릴 수 있어요 (이 영상은 ${Math.round(dur)}초). 사진첩에서 잘라서 올려주세요`, 4500); continue; }
+        const tooLong = d => toast(`영상은 ${MAX_VIDEO_SEC}초 이내만 올릴 수 있어요 (이 영상은 ${Math.round(d)}초). 사진첩에서 잘라서 올려주세요`, 4500);
+        let dur = await movDuration(f);
+        if (dur > MAX_VIDEO_SEC + 0.5) { tooLong(dur); continue; }
+        const pv = await makePoster(f), poster = pv.poster;
+        if (!(dur > 0)) dur = pv.dur;
+        if (dur > MAX_VIDEO_SEC + 0.5) { tooLong(dur); continue; }
+        if (!(dur > 0)) { // length unreadable: let small files through rather than block
+          if (mb > 60) { toast('영상 길이를 확인할 수 없어 올리지 못했어요. 10초 이내로 잘라서 다시 올려주세요', 4000); continue; }
+          dur = 0;
+        }
         ED.photos.push({ id: 'vd' + uid(), blob: f, type: 'video', poster, dur, isNew: true });
       } else ED.photos.push({ id: 'ph' + uid(), blob: await compressPhoto(f), type: 'photo', isNew: true });
     } catch (err) { toast(err.message); }
