@@ -494,7 +494,7 @@ async function thumbInfo(id) { // { url, video } for grid tiles (video → poste
   return { url: PHOTO_URLS.get(k) || null, video };
 }
 const MAX_VIDEO_SEC = 10;
-const APP_VERSION = '2026.11.10-v13';
+const APP_VERSION = '2026.11.10-v14';
 // video poster: a frame near the start, ≤ 480px
 // video length straight from the MP4/MOV header (moov → mvhd); works even when the browser won't preload the video (iPhone Safari)
 async function movDuration(file) {
@@ -1992,17 +1992,18 @@ const OCR = (() => {
       if (/score|card|team|date|tee|off|name|par|total|hdcp|putt|smart/i.test(t)) continue;
       out.push({ text: t, kind: 'en', w: w * (/\b(cc|gc|club|country|golf|resort)\b/i.test(t) ? 1 : 0.95) });
     }
+    let kText = '';
     await txtW.setParameters({ tessedit_pageseg_mode: '11' });
     try {
-      const kd = (await txtW.recognize(c)).data;
+      const kd = (await txtW.recognize(c)).data; kText = kd.text || '';
       for (const l of kd.lines || []) {
-        const t = l.text.replace(/\s+/g, '').replace(/[^가-힣A-Za-z0-9]/g, '');
-        if (!/[가-힣]{2,}/.test(t) || l.confidence < 40 || t.length > 16 || names.has(normName(t)) || /\d{2}/.test(t)) continue;
+        const t = l.text.replace(/\s+/g, '').replace(/\d+(\.\d+)?타/g, '').replace(/[^가-힣A-Za-z0-9]/g, ''); // "안성베네스트 85타" → 안성베네스트
+        if (!/[가-힣]{2,}/.test(t) || l.confidence < (t.length <= 6 ? 25 : 40) || t.length > 16 || names.has(normName(t)) || /\d{2}/.test(t)) continue;
         if (/스코어|카드|날짜|이름|캐디|소요|시간|구름|맑음|흐림|전국|골프장의|확인|입력|공인|셀프|차이/.test(t)) continue;
         out.push({ text: t, kind: 'ko', w: w * (/CC|GC|컨트리|골프|클럽|리조트/i.test(t) ? 1 : 0.95) });
       }
     } finally { await txtW.setParameters({ tessedit_pageseg_mode: '7' }); }
-    return { lines: out, text: ed.text || '' };
+    return { lines: out, text: (ed.text || '') + ' ' + kText };
   }
   const regionCanvas = (src, W, y0, y1) => { const c = document.createElement('canvas'); c.width = W; c.height = Math.max(1, y1 - y0); c.getContext('2d').drawImage(src, 0, y0, W, y1 - y0, 0, 0, W, y1 - y0); return c; };
   function parseTop(text) {
@@ -2036,14 +2037,21 @@ const OCR = (() => {
     for (let i = 0, j = 0; i < N; i++, j += 4) { const r = D[j], g = D[j + 1], b = D[j + 2]; L[i] = (r * 299 + g * 587 + b * 114) / 1000; SA[i] = Math.max(r, g, b) - Math.min(r, g, b); }
     const I = new Float64Array((W + 1) * (H + 1));
     for (let y = 0; y < H; y++) { let rs = 0; for (let x = 0; x < W; x++) { rs += L[y * W + x]; I[(y + 1) * (W + 1) + x + 1] = I[y * (W + 1) + x + 1] + rs; } }
+    const IS = new Float64Array((W + 1) * (H + 1)); // saturation, to tell a colour fill (blue header) from a grey/dark one
+    for (let y = 0; y < H; y++) { let rs = 0; for (let x = 0; x < W; x++) { rs += SA[y * W + x]; IS[(y + 1) * (W + 1) + x + 1] = IS[y * (W + 1) + x + 1] + rs; } }
+    const boxS = (x, y, R) => { const y0 = Math.max(0, y - R), y1 = Math.min(H, y + R + 1), x0 = Math.max(0, x - R), x1 = Math.min(W, x + R + 1);
+      return (IS[y1 * (W + 1) + x1] - IS[y0 * (W + 1) + x1] - IS[y1 * (W + 1) + x0] + IS[y0 * (W + 1) + x0]) / ((y1 - y0) * (x1 - x0)); };
     const box = (x, y, R) => { const y0 = Math.max(0, y - R), y1 = Math.min(H, y + R + 1), x0 = Math.max(0, x - R), x1 = Math.min(W, x + R + 1);
       return (I[y1 * (W + 1) + x1] - I[y0 * (W + 1) + x1] - I[y1 * (W + 1) + x0] + I[y0 * (W + 1) + x0]) / ((y1 - y0) * (x1 - x0)); };
     const ink = new Uint8Array(N);
     for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
       const i = y * W + x, l = L[i], M = box(x, y, 25);
       // dark text: darker than the wide background AND than its own 13×13 neighbourhood (thin stroke, not a dark box fill)
-      const dark = l < M - 45 && (l < 150 || SA[i] < 40) && l < box(x, y, 6) - 20;
-      ink[i] = dark || (M < 170 && l > M + 50) ? 1 : 0;
+      const dark = l < M - 35 && (l < 120 || SA[i] < 40) && l < box(x, y, 6) - 15; // grey or truly dark; a coloured fill (blue header) is never ink
+      // light stroke on a dark/colour fill (not white paper beside a dark box); thin white type on a strong colour fill gets a lower bar
+      const colourFill = boxS(x, y, 12) > 70;
+      const light = M < (colourFill ? 190 : 170) && l > box(x, y, 6) + 15 && l > M + (colourFill ? 35 : 50);
+      ink[i] = dark || light ? 1 : 0; // light stroke on a dark/colour fill, not white paper beside a dark box
     }
     // erase table rules: long horizontal / vertical ink runs
     for (let y = 0; y < H; y++) { let s = -1; for (let x = 0; x <= W; x++) { const on = x < W && ink[y * W + x]; if (on && s < 0) s = x; if (!on && s >= 0) { if (x - s > W * 0.15) for (let k = s; k < x; k++) ink[y * W + k] = 0; s = -1; } } }
@@ -2119,14 +2127,12 @@ const OCR = (() => {
     for (const start of [1, 10]) {
       const f = []; const seen = new Set();
       for (const w of words) { const k = w.n - start + 1; if (k >= 1 && k <= 9 && !seen.has(k)) { seen.add(k); f.push({ k, x: w.x }); } }
-      if (f.length < 6) continue;
+      if (f.length < 4) continue;
       f.sort((a, b2) => a.x - b2.x);
-      let inc = 0; for (let i = 1; i < f.length; i++) if (f[i].k > f[i - 1].k) inc++;
-      if (inc < f.length - 2) continue;
       const sl = []; for (let i = 0; i < f.length; i++) for (let j = i + 1; j < f.length; j++) if (f[j].k !== f[i].k) sl.push((f[j].x - f[i].x) / (f[j].k - f[i].k));
       const pitch = median(sl); if (!(pitch > G.W * 0.035)) continue;
       const a = median(f.map(p => p.x - pitch * p.k));
-      if (f.filter(p => Math.abs(a + pitch * p.k - p.x) < pitch * 0.3).length < 6) continue;
+      if (f.filter(p => Math.abs(a + pitch * p.k - p.x) < pitch * 0.3).length < 4) continue; // thin fonts: 4 well-placed hole numbers are enough
       return { centers: Array.from({ length: 9 }, (_, i) => a + pitch * (i + 1)), pitch, start };
     }
     return null;
@@ -2145,6 +2151,23 @@ const OCR = (() => {
     const latin = e.text.replace(/코스|course/gi, '').replace(/[^A-Za-z0-9 ]/g, ' ').split(/\s+/).filter((w, i) => w.length >= 3 || (i > 0 && SUFFIXES.includes(w.toUpperCase()))).join(' ').trim();
     if ((latin.match(/[A-Za-z]/g) || []).length >= 3 && e.conf >= 60 && /^[A-Z][A-Za-z]+( [A-Za-z0-9]+)*$/.test(latin)) return latin;
     return (await readText(G, x0, x1, y0, y1, false)).replace(/코스$/, '');
+  }
+  // faint/thin digits (e.g. light-grey PAR row): read from the colour image, enlarged and contrast-stretched
+  async function readNumColor(G, x0, x1, y0, y1) {
+    x0 = Math.max(0, Math.round(x0)); y0 = Math.max(0, Math.round(y0)); x1 = Math.min(G.W, Math.round(x1)); y1 = Math.min(G.H, Math.round(y1));
+    const w = x1 - x0, h = y1 - y0; if (w < 4 || h < 4) return { v: null };
+    const src = G.color.getContext('2d', { willReadFrequently: true }).getImageData(x0, y0, w, h), d = src.data;
+    let lo = 255, hi = 0; const L = new Uint8Array(w * h);
+    for (let i = 0; i < w * h; i++) { const l = (d[i * 4] * 299 + d[i * 4 + 1] * 587 + d[i * 4 + 2] * 114) / 1000; L[i] = l; if (l < lo) lo = l; if (l > hi) hi = l; }
+    if (hi - lo < 25) return { v: null };
+    const mid = lo + (hi - lo) * 0.55, bgLight = L.reduce((a, b) => a + (b > mid ? 1 : 0), 0) > w * h / 2;
+    for (let i = 0; i < w * h; i++) { const on = bgLight ? L[i] < mid : L[i] > mid; d[i * 4] = d[i * 4 + 1] = d[i * 4 + 2] = on ? 0 : 255; d[i * 4 + 3] = 255; }
+    const t = document.createElement('canvas'); t.width = w; t.height = h; t.getContext('2d').putImageData(src, 0, 0);
+    const k = Math.max(2, Math.min(6, 60 / h)), c = document.createElement('canvas'); c.width = Math.round(w * k) + 40; c.height = Math.round(h * k) + 40;
+    const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height); x.imageSmoothingEnabled = true; x.drawImage(t, 20, 20, Math.round(w * k), Math.round(h * k));
+    let txt = ((await numW.recognize(c)).data.text || '').trim();
+    if (!/\d/.test(txt)) txt = ((await numW8.recognize(c)).data.text || '').trim();
+    const m = txt.match(/\d+/g); return { v: m ? parseInt(m[0], 10) : null, all: m ? m.map(Number) : null };
   }
   async function recognizeGeneric(img, progress) {
     const G = prepGeneric(img), bands = bandsOf(G);
@@ -2175,26 +2198,51 @@ const OCR = (() => {
         if (prev && s.b.y0 - prev.y1 < (s.b.y1 - s.b.y0) * 3 && !secs.some(o => o.rows.includes(prev) || o.b === prev) && prev.blobs.length) {
           let x1 = prev.blobs[0].x1; for (const o of prev.blobs.slice(1)) { if (o.x0 - x1 > 40) break; x1 = o.x1; }
           sec.name = (await courseName(G, Math.max(0, prev.blobs[0].x0 - 6), x1 + 6, prev.py0, prev.py1)).trim();
+          if (/\d/.test(sec.name) || sec.name.length > 14) sec.name = ''; // a date/score line, not a course title
+          if (sec.name) s.usedTitle = true;
         }
       }
-      for (const b of s.rows) {
-        const lab = (await engLine(G, 0, lx1, b.py0, b.py1)).text; tick(1);
+      const rowH = median(s.rows.map(b => b.y1 - b.y0)) || 1;
+      for (const [ri, b] of s.rows.entries()) {
+        const labR = await engLine(G, 0, lx1, b.py0, b.py1), lab = labR.text; tick(1);
         if (/h\s*d\s*c\s*p|hcp|handi/i.test(lab) || /p\s*u\s*t/i.test(lab)) continue;
-        const isPar = /p\s*a\s*r/i.test(lab);
+        // PAR: by label, or the first row under the header when it is a thin line of small type (e.g. grey "par 4 5 3…")
+        const isPar = /p\s*a\s*r/i.test(lab) || (ri === 0 && !sec.par.length && b.y1 - b.y0 < rowH * 0.8 && !/score/i.test(lab));
         const vals = [], fail = [];
         for (const cx of centers) { const r = await readNum(G, cx - pitch * 0.42, cx + pitch * 0.42, b.py0, b.py1, false); vals.push(r.v); fail.push(!!r.fail); }
         const t = await readNum(G, tx0, G.W - 1, b.py0, b.py1, false); tick(3);
-        if (isPar || (!sec.par.length && !sec.rows.length && vals.every(v => v >= 3 && v <= 6))) { sec.par = vals; sec.parTotal = t.all ? t.all[0] : null; continue; }
-        const name = await readText(G, 0, lx1, b.py0, b.py1, false);
-        if (/^(파|핸디|퍼트|퍼팅)$/.test(name)) continue;
+        if (isPar || (!sec.par.length && !sec.rows.length && vals.every(v => v >= 3 && v <= 6))) {
+          const cy = (b.y0 + b.y1) / 2, hh = Math.max(rowH * 0.7, 14);
+          for (const [k, cx] of centers.entries()) if (!(vals[k] >= 3 && vals[k] <= 6)) { const r = await readNumColor(G, cx - pitch * 0.4, cx + pitch * 0.4, cy - hh, cy + hh); if (r.v >= 3 && r.v <= 6) vals[k] = r.v; }
+          let pt = t.all ? t.all[0] : null;
+          if (!(pt >= 27 && pt <= 45)) { const r = await readNumColor(G, tx0, G.W - 1, cy - hh, cy + hh); if (r.v >= 27 && r.v <= 45) pt = r.v; }
+          if (pt && vals.every(v => v >= 3 && v <= 6) && sum(vals) !== pt) { // a misread digit: let the PAR total decide between the two readings
+            const alt = []; for (const cx of centers) alt.push((await readNumColor(G, cx - pitch * 0.4, cx + pitch * 0.4, cy - hh, cy + hh)).v);
+            const diff = vals.map((v, k) => alt[k] >= 3 && alt[k] <= 6 && alt[k] !== v ? k : -1).filter(k => k >= 0);
+            if (diff.length <= 6) for (let m = 1; m < (1 << diff.length); m++) {
+              const tryV = vals.slice(); diff.forEach((k, j) => { if (m & (1 << j)) tryV[k] = alt[k]; });
+              if (sum(tryV) === pt) { vals.splice(0, 9, ...tryV); break; }
+            }
+          }
+          sec.par = vals; sec.parTotal = pt; continue;
+        }
+        const latin = lab.replace(/[^A-Za-z ]/g, ' ').trim();
+        const name = /^s\s*c\s*o\s*r\s*e/i.test(latin) ? '__ME__' // single-player card: the "score" row is me
+          : /^[A-Za-z]{3,}( [A-Za-z]+)?$/.test(latin) && labR.conf >= 75 ? latin.toUpperCase() : await readText(G, 0, lx1, b.py0, b.py1, false); // confident English word (EAST/SOUTH), else a Korean name
+        if (/^(파|핸디|퍼트|퍼팅|스코어)$/.test(name)) continue;
         sec.rows.push({ name, vals, fail, total: t.all ? t.all[0] : null });
+      }
+      // courses as rows (e.g. "HOLE 1…9 / EAST / SOUTH", one player): no PAR row and every row label is a course-like word
+      if (!sec.par.length && sec.rows.length >= 2 && sec.rows.every(r => /^[A-Z][A-Z ]{2,}$/.test(r.name) && r.name !== '__ME__')) {
+        for (const r of sec.rows) out.push({ name: r.name, par: centers.map(() => null), parTotal: null, rows: [{ name: '__ME__', vals: r.vals, fail: r.fail, total: r.total }] });
+        continue;
       }
       if (!sec.par.length) sec.par = centers.map(() => null);
       if (sec.rows.length) out.push(sec);
     }
     if (!out.length) return null;
     // date / time / club: everything above the first table, plus the area below the last one (e.g. "모나크 CC" footer)
-    const topY = Math.max(0, (bands[secs[0].idx - 1] && !secs[0].name ? bands[secs[0].idx - 1].y0 : secs[0].b.y0) - 4);
+    const topY = Math.max(0, (secs[0].usedTitle && bands[secs[0].idx - 1] ? bands[secs[0].idx - 1].y0 : secs[0].b.y0) - 4); // above the table (and above its course title, if one was used)
     const names = new Set(out.flatMap(s => s.rows.map(r => normName(r.name))));
     let top = {}, club = null; const clubCands = [];
     if (topY > 30) {
@@ -2302,6 +2350,19 @@ const OCR = (() => {
       notes.push('⚠️ ' + (res.error || '스코어 표를 인식하지 못했습니다') + ' — 직접 입력해 주세요.');
       const b = blankRound(); b.image = res.image; b.date = r.date; return { r: b, warn, notes, card: null };
     }
+    // PAR missing on the card → take it from an earlier round with the same course name
+    const parFromHistory = name => {
+      const n = normName(name); if (!n) return null;
+      const hit = S.rounds.slice().sort((a, b) => b.date.localeCompare(a.date)).flatMap(x => x.courses).find(c => normName(c.name) === n && c.par.every(v => v >= 3 && v <= 6));
+      return hit ? hit.par.slice() : null;
+    };
+    let parHist = 0;
+    res.sections.forEach(s => {
+      if (s.par.filter(v => v >= 3 && v <= 6).length === s.par.length) return;
+      const h = parFromHistory(s.name.replace(/^(코스|COURSE)/i, '')); if (!h || h.length !== s.par.length) return;
+      s.par = s.par.map((v, k) => v >= 3 && v <= 6 ? v : h[k]); parHist++;
+    });
+    if (parHist) notes.push(`PAR는 같은 코스의 이전 기록에서 가져왔어요. 다르면 고쳐주세요.`);
     // course & par
     res.sections.forEach((s, ci) => {
       const name = s.name.replace(/^(코스|COURSE)/i, '');
@@ -2323,7 +2384,8 @@ const OCR = (() => {
     const np = Math.max(...res.sections.map(s => s.rows.length));
     const mine = normName(myName);
     for (let pi = 0; pi < np; pi++) {
-      const name = res.sections.map(s => s.rows[pi]?.name).find(Boolean) || '';
+      let name = res.sections.map(s => s.rows[pi]?.name).find(Boolean) || '';
+      if (name === '__ME__') name = myName || '나';
       r.players.push({ name, me: false, scores: [] });
     }
     res.sections.forEach((s, ci) => {
@@ -2363,7 +2425,8 @@ const OCR = (() => {
     const dict = matchClubs(res.clubCands || (res.logo ? [{ text: res.logo.text, kind: 'en' }] : []));
     if (!r.club && dict[0] && dict[0].strong && dict[0].score >= 0.8 && (!dict[1] || dict[0].score - dict[1].score >= 0.05)) { r.club = dict[0].name; clubSrc = 'dict'; }
     if (!r.club && dict[0] && !dict[0].strong) { clubSrc = 'ask'; } // only a short fragment (e.g. "안성"): offer candidates
-    if (!r.club && r.logo && clubSrc !== 'ask') { r.club = r.logo; clubSrc = 'logo'; }
+    // raw reading as a last resort, only when it looks like a name (Latin wordmark or a Korean line with CC/골프/클럽…)
+    if (!r.club && r.logo && clubSrc !== 'ask' && (!/[가-힣]/.test(r.logo) || /CC|GC|골프|컨트리|클럽|리조트/i.test(r.logo))) { r.club = r.logo; clubSrc = 'logo'; }
     if (!r.club) { r.club = r.courses.map(c => S.clubMap[c.name]).find(Boolean) || ''; if (r.club) clubSrc = 'memo'; }
     let bad = 0;
     card.forEach((cs, ci) => cs.forEach((t, pi) => { if (t != null && sum(r.players[pi].scores[ci]) !== t) bad++; }));
@@ -2392,7 +2455,7 @@ const OCR = (() => {
       try { localStorage.setItem('ocrWarm', '1'); } catch (e) {}
     } catch (e) { /* try again next launch */ } finally { warming = false; }
   }
-  return { prepare, recognize, toRound, warmup, _dbg: { blueSpans, cropCanvas, analyze, cellCanvas, readNum, loadImage, prepGeneric, bandsOf, hasRun, headerCols, recognizeGeneric, w: () => numW, w8: () => numW8 } };
+  return { prepare, recognize, toRound, warmup, _dbg: { regionCanvas, clubLines, blueSpans, cropCanvas, analyze, cellCanvas, readNum, loadImage, prepGeneric, bandsOf, hasRun, headerCols, recognizeGeneric, w: () => numW, w8: () => numW8 } };
 })();
 
 async function recognizeFile(f, progress) {
