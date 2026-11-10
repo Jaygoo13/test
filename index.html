@@ -565,8 +565,7 @@ function canonicalClub(name, min = 0.85) {
   return null;
 }
 // 동반자 이름 규칙 (설정에서 편집): 나를 뺀 동반자들의 성(첫 글자)이 규칙과 정확히 같으면(순서 무관) 실명으로 바꿉니다.
-// 예) 박**, 홍**, 이** + 규칙 [박한진, 홍승수, 이종승] → 박한진, 홍승수, 이종승
-const OWNER_SEED = { owner: '구자윤', groups: [['박한진', '홍승수', '이종승'], ['박한진', '권용환', '이종승'], ['오석원', '박지훈', '이상영'], ['김병주', '박한진', '이종승'], ['박한진', '문준기', '김형수']] };
+// 예) 박**, 홍**, 이** + 규칙 [박철수, 홍길동, 이영희] → 박철수, 홍길동, 이영희
 const surOf = n => (String(n || '').match(/[가-힣]/) || [''])[0];
 function applyKnownGroups(r, onlyMasked) {
   const groups = (S.settings.groups || []).filter(g => g.length);
@@ -644,7 +643,7 @@ async function loadAll() {
   try { S.rounds = await DB.all(); } catch (e) { S.rounds = []; toast('저장소를 열 수 없습니다: ' + e.message, 4000); }
   try { Object.assign(S.settings, (await DB.get('settings')) || {}); } catch (e) {}
   if (!Array.isArray(S.settings.groups)) {
-    S.settings.groups = normName(S.settings.myName) === normName(OWNER_SEED.owner) ? OWNER_SEED.groups.map(g => g.slice()) : [];
+    S.settings.groups = [];
     DB.set('settings', S.settings).catch(() => {});
   }
   try { S.clubMap = (await DB.get('clubMap')) || {}; } catch (e) {}
@@ -1291,7 +1290,7 @@ function askWhoAmI(r) {
         const nm = el.querySelector('#wmName').value.trim();
         r.players.forEach((p, i) => p.me = i === sel);
         if (nm) { r.players[sel].name = nm; S.settings.myName = nm; DB.set('settings', S.settings).catch(() => {}); }
-        if (!Array.isArray(S.settings.groups) || (!S.settings.groups.length && normName(nm) === normName(OWNER_SEED.owner))) { S.settings.groups = normName(nm) === normName(OWNER_SEED.owner) ? OWNER_SEED.groups.map(g => g.slice()) : []; DB.set('settings', S.settings).catch(() => {}); }
+        if (!Array.isArray(S.settings.groups)) { S.settings.groups = []; DB.set('settings', S.settings).catch(() => {}); }
         applyKnownGroups(r);
         el.remove(); done();
       };
@@ -1308,8 +1307,8 @@ function openGroups() {
     el.innerHTML = `<div class="gbox" style="max-height:85vh;overflow-y:auto"><h3>동반자 이름 규칙</h3>
       <p style="font-size:13px;color:var(--muted);margin:0 0 10px;line-height:1.5">카드에 <b>박**, 홍**, 이**</b>처럼 성만 보일 때, 나를 뺀 동반자의 성이 규칙과 모두 같으면(순서 무관) 실명으로 바꿔요.</p>
       ${gs.length ? gs.map((g, i) => `<div class="set-item"><span style="flex:1;font-weight:600">${g.map(esc).join(' · ')}<div class="d">${g.map(n => surOf(n) + '**').join(', ')}일 때</div></span><button class="x" data-del="${i}" aria-label="삭제" style="color:var(--warn);font-size:18px;padding:6px">✕</button></div>`).join('') : '<p style="color:var(--muted);font-size:14px">아직 규칙이 없어요.</p>'}
-      <label style="display:block;font-size:12px;color:var(--muted);font-weight:600;margin:14px 0 4px">새 규칙 — 동반자 실명을 쉼표로 구분 (예: 박한진, 홍승수, 이종승)</label>
-      <input type="text" id="grNew" placeholder="박한진, 홍승수, 이종승">
+      <label style="display:block;font-size:12px;color:var(--muted);font-weight:600;margin:14px 0 4px">새 규칙 — 동반자 실명을 쉼표로 구분 (예: 박철수, 홍길동, 이영희)</label>
+      <input type="text" id="grNew" placeholder="박철수, 홍길동, 이영희">
       <button class="btn primary" id="grAdd" style="width:100%;margin-top:8px;padding:12px">규칙 추가</button>
       <button class="btn" id="grApply" style="width:100%;margin-top:8px">기존 기록에도 적용</button>
       <button class="btn close" style="width:100%;margin-top:8px">닫기</button></div>`;
@@ -1659,7 +1658,7 @@ const OCR = (() => {
     }
     return bs >= 0.6 ? best : u;
   }
-  function squeezeGaps(cv) { // "구 자 윤" → "구자윤": shorten blank column runs wider than 30% of the text height
+  function squeezeGaps(cv) { // "홍 길 동" → "홍길동": shorten blank column runs wider than 30% of the text height
     const w = cv.width, h = cv.height, g = cv.getContext('2d').getImageData(0, 0, w, h).data;
     const blank = x => { for (let y = 0; y < h; y++) if (g[(y * w + x) * 4] < 128) return false; return true; };
     let y0 = h, y1 = 0; for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (g[(y * w + x) * 4] < 128) { if (y < y0) y0 = y; if (y > y1) y1 = y; }
