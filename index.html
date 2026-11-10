@@ -267,7 +267,8 @@ table.ed td.t{min-width:40px;text-align:center;font-weight:800;font-size:14px}
 .mk-rule span{color:var(--muted);font-weight:700}
 .mk-gear{position:absolute;right:12px;bottom:10px;font-size:12px;font-weight:700;background:var(--accent-soft);color:var(--accent);border-radius:999px;padding:4px 10px}
 /* help: phone simulation (add to home screen) */
-.mph{height:100%;max-height:250px;aspect-ratio:9/17;border-radius:24px;border:5px solid #0b0d0c;background:#101412;position:relative;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,.3);font-size:7px;color:#e7ece9}
+.ob-art.tall{flex:1;height:auto;min-height:220px;width:100%;margin:4px 0 14px}
+.mph{flex:none;width:150px;height:284px;border-radius:24px;border:4px solid #0b0d0c;background:#101412;position:relative;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,.3);font-size:7px;color:#e7ece9}
 .mph .scr{position:absolute;inset:0;display:flex;flex-direction:column}
 .mph .sb{display:flex;justify-content:space-between;padding:5px 10px 2px;font-size:7px;font-weight:700;color:#fff}
 .hs-url{margin:2px 6px 4px;background:#3a3f3c;border-radius:8px;padding:4px 6px;display:flex;align-items:center;justify-content:space-between;font-size:7px;color:#ddd}
@@ -311,19 +312,22 @@ table.ed td.t{min-width:40px;text-align:center;font-weight:800;font-size:14px}
 @keyframes hsHome{0%,44%{opacity:0}47%,95%{opacity:1}100%{opacity:0}}
 @keyframes hsNew{0%,49%{opacity:0;transform:translateY(-14px) scale(.5)}55%{opacity:1;transform:none}66%{transform:scale(.88)}69%,100%{opacity:1;transform:none}}
 @keyframes hsOpen{0%,69%{opacity:0;transform:scale(.12)}75%,95%{opacity:1;transform:none}100%{opacity:0}}
-/* help: views tabs → real screens */
-.vw-panes{position:absolute;left:12px;right:12px;top:52px;bottom:36px}
+/* help: views tabs → real screens, then ⚙︎ settings → backup */
+.vw{padding:10px 12px}
+.vw-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;font-weight:800;font-size:13px}
+.vw-top .g{width:24px;height:24px;display:grid;place-items:center;color:var(--muted)}
+.vw-top .g svg{width:17px;height:17px}
+.vw-panes{position:absolute;left:12px;right:12px;top:82px;bottom:10px}
 .vw-p{position:absolute;inset:0;opacity:0}
 .vw-p1{opacity:1}
-.play .vw-p1{animation:vwP1 7.5s infinite}.play .vw-p2{animation:vwP2 7.5s infinite}.play .vw-p3{animation:vwP3 7.5s infinite}
-@keyframes vwP1{0%,31%{opacity:1}34%,95%{opacity:0}98%,100%{opacity:1}}
-@keyframes vwP2{0%,33%{opacity:0;transform:translateX(12px)}37%,64%{opacity:1;transform:none}67%,100%{opacity:0}}
-@keyframes vwP3{0%,66%{opacity:0;transform:translateX(12px)}70%,95%{opacity:1;transform:none}98%,100%{opacity:0}}
-.play .vw .mk-seg i{animation:vwSeg 7.5s ease-in-out infinite}
-@keyframes vwSeg{0%,30%{transform:translateX(0)}35%,63%{transform:translateX(100%)}68%,94%{transform:translateX(200%)}99%,100%{transform:translateX(0)}}
-.vw-tap{position:absolute;top:50%;width:18px;height:18px;margin:-9px 0 0 -9px;border-radius:50%;background:rgba(127,127,127,.35);opacity:0;z-index:2;left:50%}
-.play .vw-tap{animation:vwTap 7.5s infinite}
-@keyframes vwTap{0%,26%{opacity:0;left:50%;transform:scale(1)}29%{opacity:1;transform:scale(1)}32%{transform:scale(.6);opacity:1;left:50%}35%{opacity:0;left:50%}59%{opacity:0;left:83%}62%{opacity:1;transform:scale(1);left:83%}65%{transform:scale(.6);opacity:1;left:83%}68%{opacity:0;left:83%}91%{opacity:0;left:17%}94%{opacity:1;transform:scale(1);left:17%}97%{transform:scale(.6);opacity:1;left:17%}100%{opacity:0;left:17%}}
+.play .vw-p1{animation:vwP1 11s infinite}.play .vw-p2{animation:vwP2 11s infinite}.play .vw-p3{animation:vwP3 11s infinite}
+@keyframes vwP1{0%,21%{opacity:1}23%,96%{opacity:0}97%,100%{opacity:1}}
+@keyframes vwP2{0%,22%{opacity:0;transform:translateX(12px)}25%,43%{opacity:1;transform:none}45%,100%{opacity:0}}
+@keyframes vwP3{0%,44%{opacity:0;transform:translateX(12px)}47%,95%{opacity:1;transform:none}96%,100%{opacity:0}}
+.play .vw .mk-seg i{animation:vwSeg 11s ease-in-out infinite}
+@keyframes vwSeg{0%,21%{transform:translateX(0)}24%,43%{transform:translateX(100%)}46%,94%{transform:translateX(200%)}96%,100%{transform:translateX(0)}}
+.vw-tap{position:absolute;width:20px;height:20px;margin:-10px 0 0 -10px;border-radius:50%;background:rgba(127,127,127,.45);box-shadow:0 0 0 3px rgba(127,127,127,.2);opacity:0;z-index:6;left:50%;top:50%}
+.play .vw-tap{animation:vwTap 11s infinite}
 .vw .mk-cal i{padding:2px;font-size:8px}.vw .mk-cal i b{opacity:1;transform:none;font-size:11px}
 .vw-day{display:flex;flex-direction:column;gap:5px;font-size:10px}
 .vw-day .t{font-weight:800;font-size:12px}.vw-day .c{color:var(--muted);font-size:10px}
@@ -334,8 +338,24 @@ table.ed td.t{min-width:40px;text-align:center;font-weight:800;font-size:14px}
 .vw-st b{display:block;font-size:14px;color:var(--text)}
 .vw .mk-bars{height:72px}
 .vw .mk-bars i{transform:scaleY(1)}
-.play .vw .mk-bars i{animation:vwBar 7.5s ease-out infinite}
-@keyframes vwBar{0%,67%{transform:scaleY(.05)}76%,100%{transform:scaleY(1)}}
+.play .vw .mk-bars i{animation:vwBar 11s ease-out infinite}
+@keyframes vwBar{0%,45%{transform:scaleY(.05)}53%,100%{transform:scaleY(1)}}
+.vw-set{position:absolute;inset:0;background:var(--bg);z-index:3;transform:translateX(102%);display:flex;flex-direction:column}
+.play .vw-set{animation:vwSet 11s ease-in-out infinite}
+@keyframes vwSet{0%,62%{transform:translateX(102%)}66%,94%{transform:none}98%,100%{transform:translateX(102%)}}
+.vw-set .bar{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border-bottom:1px solid var(--line);font-weight:800;font-size:13px}
+.vw-set .bar em{font-style:normal;color:var(--accent);font-size:12px}
+.vw-set .grp{margin:8px;background:var(--card);border-radius:12px;padding:0 10px}
+.vw-set .it{display:flex;align-items:center;justify-content:space-between;gap:6px;padding:8px 0;border-bottom:1px solid var(--line);font-size:11px;font-weight:600}
+.vw-set .it:last-child{border:0}
+.vw-set .it small{display:block;font-size:8.5px;color:var(--muted);font-weight:400;margin-top:1px}
+.vw-set .it u{text-decoration:none;flex:none;background:var(--bg);border-radius:8px;padding:5px 9px;font-weight:800;font-size:10px}
+.vw-set .it.hl{border-radius:8px}
+.play .vw-set .it.hl{animation:vwHl 11s infinite}
+@keyframes vwHl{0%,68%{background:transparent}71%,90%{background:var(--accent-soft)}93%,100%{background:transparent}}
+.vw-toast{position:absolute;left:50%;bottom:14px;transform:translate(-50%,10px);background:var(--text);color:var(--card);font-size:10px;font-weight:700;padding:6px 10px;border-radius:999px;white-space:nowrap;opacity:0;z-index:4}
+.play .vw-toast{animation:vwToast 11s infinite}
+@keyframes vwToast{0%,79%{opacity:0;transform:translate(-50%,10px)}82%,92%{opacity:1;transform:translate(-50%,0)}95%,100%{opacity:0}}
 /* empty-state nudge */
 .fab.nudge{animation:pulse 1.6s ease-in-out infinite}
 #installBar.pulse{animation:barGlow 1.6s ease-in-out infinite}
@@ -2755,17 +2775,24 @@ const ONBOARD = (() => {
   const buddies = () => `<div class="mk"><div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:10px">스코어카드의 동반자</div>
     <div class="mk-swap">${[['박**', '박철수'], ['홍**', '홍길동'], ['이**', '이영희']].map(([a, b2]) => `<span class="sw"><i class="a">${a}</i><i class="b">${b2}</i></span>`).join('')}</div>
     <div class="mk-rule"><span>⚙︎ 자주하는 동반자</span><b>박철수 · 홍길동 · 이영희</b></div></div>`;
-  const views = () => `<div class="mk vw"><div class="mk-seg"><i></i><span>월간</span><span>일간</span><span>통계</span><b class="vw-tap"></b></div>
+  const views = () => `<div class="mk vw"><div class="vw-top"><span>2026년 10월</span><span class="g"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></span></div>
+    <div class="mk-seg"><i></i><span>월간</span><span>일간</span><span>통계</span></div>
     <div class="vw-panes">
       <div class="vw-p vw-p1"><div class="mk-cal">${Array.from({ length: 28 }, (_, i) => { const sc = { 9: 82, 17: 86, 25: 79 }[i]; return `<i class="${sc ? 'hit' : ''}">${i + 1}${sc ? `<b>${sc}</b>` : ''}</i>`; }).join('')}</div></div>
       <div class="vw-p vw-p2"><div class="vw-day"><span class="t">10월 26일 (일)</span><span class="c">⛳ 벨라스톤 CC · 07:59</span>
         <span class="r me"><span>★ 나</span><b>79 (+7)</b></span><span class="r"><span>박**</span><span>86</span></span><span class="r"><span>홍**</span><span>91</span></span></div></div>
       <div class="vw-p vw-p3"><div class="vw-st"><span><b>84.2</b>평균</span><span><b>79</b>베스트</span><span><b>12</b>라운드</span></div>
         <div class="mk-bars"><i style="height:45%"></i><i style="height:85%"></i><i style="height:60%"></i><i style="height:35%"></i><i style="height:55%"></i></div></div>
-    </div><span class="mk-gear">⚙︎ 백업</span></div>`;
+    </div>
+    <div class="vw-set"><div class="bar"><span></span><span>설정</span><em>닫기</em></div>
+      <div class="grp"><div class="it hl"><span>백업 내보내기<small>전체 기록을 파일로 저장</small></span><u class="vw-ex">내보내기</u></div>
+        <div class="it"><span>백업에 사진·영상 포함<small>포함 — ZIP 파일 하나로 저장</small></span><u>포함</u></div>
+        <div class="it"><span>백업 가져오기<small>새 폰에서 백업 파일로 복원</small></span><u>가져오기</u></div></div>
+      <span class="vw-toast">✓ 골력 백업 파일 저장 완료</span></div>
+    <span class="vw-tap"></span></div>`;
   const slides = help => [
     { art: cal, h: '스코어카드 사진만 넣으면<br>달력에 기록돼요', p: ['골프장·티업 시간·내 타수·동반자 타수가 날짜별로 정리됩니다.', '기록은 서버가 아니라 <b>내 폰에만</b> 저장돼요.'] },
-    { art: home, h: '홈 화면에 추가하세요', p: [INSTALL.standalone() ? '✓ 이미 홈 화면 앱으로 실행 중이에요.' : ios ? '<b>스코어카드를 넣기 전에 먼저</b> 추가하세요.<br>공유 버튼 → 홈 화면에 추가 → 추가<br>그다음 홈 화면 아이콘으로 열어서 쓰세요.' : '<b>스코어카드를 넣기 전에 먼저</b> 추가하세요.<br>아래 버튼을 누르면 설치 창이 떠요.'], install: !INSTALL.standalone() },
+    { art: home, tall: true, h: '홈 화면에 추가하세요', p: [INSTALL.standalone() ? '✓ 이미 홈 화면 앱으로 실행 중이에요.' : ios ? '<b>스코어카드를 넣기 전에 먼저</b> 추가하세요.<br>공유 버튼 → 홈 화면에 추가 → 추가<br>그다음 홈 화면 아이콘으로 열어서 쓰세요.' : '<b>스코어카드를 넣기 전에 먼저</b> 추가하세요.<br>아래 버튼을 누르면 설치 창이 떠요.'], install: !INSTALL.standalone() },
     { art: scan, h: '＋ 버튼으로 스코어카드 사진 추가', p: ['오른쪽 아래 <b>＋</b> → <b>스코어카드 이미지로 추가</b>', '여러 장을 한 번에 골라도 돼요. 날짜·홀별 타수를 자동으로 읽어요.'] },
     { art: check, h: '확인하고 저장', p: ['카드 합계와 맞으면 <b>✓</b>, 다르면 빨간색으로 알려줘요.', '골프장은 <b>후보 버튼</b>을 누르거나 입력하고, 틀린 칸만 고친 뒤 저장하세요.'] },
     { art: views, h: '기록 보기와 백업', p: ['<b>월간·일간·통계</b>로 나의 골프 기록을 확인하세요.', '폰을 바꿀 때를 대비해 <b>⚙︎ 설정 → 백업 내보내기</b>를 가끔 해두세요.'] },
@@ -2787,16 +2814,38 @@ const ONBOARD = (() => {
     ['새 기능이 안 보여요', '앱을 완전히 닫았다가 다시 열면 최신 버전으로 바뀌어요. ⚙︎ 설정에서 지금 버전을 확인할 수 있어요.'],
     ['아이폰에서 기록이 사라졌어요', '홈 화면에 추가하지 않고 Safari에서만 쓰면 오래 안 열 때 지워질 수 있어요. 홈 화면 앱으로 쓰고 가끔 백업하세요.'],
   ];
-  // tap marker path for the home-screen phone: measured from the real mock layout
-  function tapPath(root) {
-    const ph = root.querySelector('.mph'); if (!ph) return;
-    const pt = sel => { let e = root.querySelector(sel), x = e.offsetWidth / 2, y = e.offsetHeight / 2;
-      while (e && e !== ph) { x += e.offsetLeft; y += e.offsetTop; e = e.offsetParent; }
-      return `left:${(x / ph.clientWidth * 100).toFixed(1)}%;top:${(y / ph.clientHeight * 100).toFixed(1)}%`; };
-    const A = pt('.hs-ban em'), B = pt('.hs-url svg, .hs-url b'), C = pt('.hs-sheet .rw.go'), D = pt('.hs-ic.new img');
-    const o = ph.querySelector('.hs-open'); if (o) o.style.transformOrigin = D.replace(/left:|top:/g, '').replace(';', ' ');
+  // tap markers follow the real mock layout: positions are measured, keyframes generated
+  function kfPath(root, box, name, steps) {
+    const pt = sel => { let e = root.querySelector(sel); if (!e) return 'left:50%;top:50%';
+      let x = e.offsetWidth / 2, y = e.offsetHeight / 2;
+      while (e && e !== box) { x += e.offsetLeft; y += e.offsetTop; e = e.offsetParent; }
+      return `left:${(x / box.clientWidth * 100).toFixed(1)}%;top:${(y / box.clientHeight * 100).toFixed(1)}%`; };
+    // steps: [startPct, selector] → appear, press, release, fade
+    const k = steps.map(([t, sel]) => { const P = pt(sel);
+      return `${t - 3}%{opacity:0;${P};transform:scale(1)}${t}%{opacity:1;${P};transform:scale(1)}${t + 2}%{opacity:1;${P};transform:scale(.65)}${t + 3.5}%{opacity:1;${P};transform:scale(1)}${t + 5}%{opacity:0;${P}}`; });
+    return `@keyframes ${name}{0%{opacity:0}${k.join('')}100%{opacity:0}}`;
+  }
+  function tapPaths(root) {
+    let css = '';
+    const ph = root.querySelector('.mph');
+    if (ph) {
+      const P = sel => { let e = root.querySelector(sel), x = e.offsetWidth / 2, y = e.offsetHeight / 2;
+        while (e && e !== ph) { x += e.offsetLeft; y += e.offsetTop; e = e.offsetParent; }
+        return `left:${(x / ph.clientWidth * 100).toFixed(1)}%;top:${(y / ph.clientHeight * 100).toFixed(1)}%`; };
+      const A = P('.hs-ban em'), B = P('.hs-url svg, .hs-url b'), C = P('.hs-sheet .rw.go'), D = P('.hs-ic.new img');
+      const o = ph.querySelector('.hs-open'); if (o) o.style.transformOrigin = D.replace(/left:|top:/g, '').replace(';', ' ');
+      css += `@keyframes hsTap{0%{opacity:0;${A};transform:scale(1)}8%{opacity:1;${A};transform:scale(1)}11%{${A};transform:scale(.7)}14%{${A};transform:scale(1)}22%{${B};transform:scale(1)}25%{${B};transform:scale(.7)}27%{${B};transform:scale(1)}36%{${C};transform:scale(1)}39%{${C};transform:scale(.7)}41%{opacity:1;${C};transform:scale(1)}44%{opacity:0;${C}}60%{opacity:0;${D}}64%{opacity:1;${D};transform:scale(1)}67%{${D};transform:scale(.7)}69%{opacity:1;${D};transform:scale(1)}72%,100%{opacity:0;${D}}}`;
+    }
+    const vw = root.querySelector('.vw');
+    if (vw) css += kfPath(root, vw, 'vwTap', [[19, '.vw .mk-seg span:nth-child(3)'], [41, '.vw .mk-seg span:nth-child(4)'], [59, '.vw-top .g'], [75, '.vw-ex']]);
     let st = document.getElementById('hsKf'); if (!st) { st = document.createElement('style'); st.id = 'hsKf'; document.head.appendChild(st); }
-    st.textContent = `@keyframes hsTap{0%{opacity:0;${A};transform:scale(1)}8%{opacity:1;${A};transform:scale(1)}11%{${A};transform:scale(.7)}14%{${A};transform:scale(1)}22%{${B};transform:scale(1)}25%{${B};transform:scale(.7)}27%{${B};transform:scale(1)}36%{${C};transform:scale(1)}39%{${C};transform:scale(.7)}41%{opacity:1;${C};transform:scale(1)}44%{opacity:0;${C}}60%{opacity:0;${D}}64%{opacity:1;${D};transform:scale(1)}67%{${D};transform:scale(.7)}69%{opacity:1;${D};transform:scale(1)}72%,100%{opacity:0;${D}}}`;
+    st.textContent = css;
+  }
+  // the phone is drawn at a fixed design size and scaled to fill its slide
+  function fitPhone(root) {
+    const ph = root.querySelector('.mph'); if (!ph) return;
+    const art = ph.parentElement, k = Math.min(art.clientHeight / ph.offsetHeight, art.clientWidth / ph.offsetWidth);
+    if (k > 0) ph.style.transform = `scale(${k.toFixed(3)})`;
   }
   function open(help = false) {
     const list = slides(help), n = list.length;
@@ -2804,12 +2853,13 @@ const ONBOARD = (() => {
     el.innerHTML = `<div class="ob-top"><span class="step" id="obStep"></span><button id="obSkip">${help ? '닫기' : '건너뛰기'}</button></div>
       <div class="ob-track" id="obTrack">${list.map((s, i) => s.faq
         ? `<section class="ob-slide"><h2 style="margin-top:12px">자주 묻는 질문</h2><div class="ob-faq">${FAQ.map(([q, a]) => `<details><summary>${q}</summary><p>${a}</p></details>`).join('')}</div></section>`
-        : `<section class="ob-slide" data-i="${i}"><div class="ob-art">${s.art()}</div><h2>${s.h}</h2>${s.p.map(t => `<p>${t}</p>`).join('')}
+        : `<section class="ob-slide" data-i="${i}"><div class="ob-art${s.tall ? ' tall' : ''}">${s.art()}</div><h2>${s.h}</h2>${s.p.map(t => `<p>${t}</p>`).join('')}
             ${s.install ? `<button class="btn primary" id="obInstall" style="flex:none;margin-top:8px;padding:12px 22px">📲 홈 화면에 추가</button>` : ''}</section>`).join('')}</div>
       <div class="ob-dots">${list.map(() => '<i></i>').join('')}</div>
       <div class="ob-nav"><button class="btn primary" id="obNext"></button></div>`;
     document.body.appendChild(el);
-    tapPath(el);
+    tapPaths(el); fitPhone(el);
+    const onRs = () => fitPhone(el); addEventListener('resize', onRs);
     const track = el.querySelector('#obTrack'), dots = [...el.querySelectorAll('.ob-dots i')], next = el.querySelector('#obNext');
     let cur = -1;
     const show = i => {
@@ -2821,7 +2871,7 @@ const ONBOARD = (() => {
     };
     const go = i => track.scrollTo({ left: i * track.clientWidth, behavior: 'smooth' });
     track.addEventListener('scroll', () => show(Math.round(track.scrollLeft / Math.max(1, track.clientWidth))), { passive: true });
-    const close = () => {
+    const close = () => { removeEventListener('resize', onRs);
       markSeen(); el.remove(); render(); OCR.warmup();
     };
     next.onclick = () => cur < n - 1 ? go(cur + 1) : close();
