@@ -494,7 +494,7 @@ async function thumbInfo(id) { // { url, video } for grid tiles (video → poste
   return { url: PHOTO_URLS.get(k) || null, video };
 }
 const MAX_VIDEO_SEC = 10;
-const APP_VERSION = '2026.11.11-v17';
+const APP_VERSION = '2026.11.11-v18';
 // video poster: a frame near the start, ≤ 480px
 // video length straight from the MP4/MOV header (moov → mvhd); works even when the browser won't preload the video (iPhone Safari)
 async function movDuration(file) {
@@ -2163,9 +2163,15 @@ const OCR = (() => {
   async function courseName(G, x0, x1, y0, y1) { // Latin ("LAKE", "Mountain") or Korean ("스톤", "챔피언IN")
     let e = await engLine(G, x0, x1, y0, y1);
     const cc = colorCanvas(G, x0, x1, y0 - 4, y1 + 4); // white-on-dark titles read better from the colour image
+    let ct = '';
     if (cc) {
-      const { data } = await lineW.recognize(cc), t = (data.text || '').trim();
+      const { data } = await lineW.recognize(cc), t = (data.text || '').trim(); ct = t;
       if ((data.confidence || 0) > e.conf && /^[^A-Za-z]*[A-Z][A-Za-z]{2,}([ -][A-Za-z0-9]+)*[^A-Za-z]*$/.test(t)) e = { text: t, conf: data.confidence || 0 };
+    }
+    // a reading close to a common course word wins even at low confidence ("Wiountain" → Mountain)
+    for (const t of [e.text, ct]) {
+      const w = (t || '').replace(/[^A-Za-z]/g, ' ').trim().split(/\s+/).filter(x => x.length >= 4);
+      if (w.length === 1) { const sw = snapWord(w[0]); if (COURSE_WORDS.some(c => c.toLowerCase() === sw.toLowerCase())) return sw; }
     }
     const latin = e.text.replace(/코스|course/gi, '').replace(/[^A-Za-z0-9 \-]/g, ' ').replace(/\s*-\s*/g, '-').split(/\s+/).filter((w, i) => w.length >= 3 || (i > 0 && SUFFIXES.includes(w.toUpperCase()))).join(' ').trim();
     const okLatin = (latin.match(/[A-Za-z]/g) || []).length >= 3 && /^[A-Z][A-Za-z]+([ -][A-Za-z0-9]+)*$/.test(latin);
@@ -2232,7 +2238,8 @@ const OCR = (() => {
       const { centers, pitch } = s.cols, lx1 = centers[0] - pitch * 0.55, tx0 = centers[8] + pitch * 0.5;
       const sec = { name: '', par: [], parTotal: null, rows: [] };
       // course name: header label, else the text line just above the header
-      const hl = (await courseName(G, 0, lx1, s.b.py0, s.b.py1)).trim();
+      let hl = (await courseName(G, 0, lx1, s.b.py0, s.b.py1)).trim();
+      if (!/[A-Za-z가-힣]{2,}/.test(hl) || /\d/.test(hl)) hl = (await courseName(G, 0, lx1, s.b.y0 - 3, s.b.y1 + 3)).trim(); // tight crop: keep the PAR row out
       if (hl.replace(/[^A-Za-z가-힣]/g, '').length >= 2 && !/^(h|hole|holes|홀|no)$/i.test(hl)) sec.name = hl;
       else {
         const prev = bands[s.idx - 1];
