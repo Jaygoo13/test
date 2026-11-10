@@ -176,6 +176,10 @@ table.ed td.t{min-width:40px;text-align:center;font-weight:800;font-size:14px}
 .set-item .d{font-size:12px;color:var(--muted)}
 .set-item button{white-space:nowrap}
 .help{font-size:13px;color:var(--muted);line-height:1.6}
+.csugs{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;align-items:center}
+.csugs .csl{font-size:12px;color:var(--muted);font-weight:600;margin-right:2px}
+.csug{border:1px solid var(--line);background:var(--bg);border-radius:999px;padding:5px 11px;font-size:13px;font-weight:600}
+.csug.ai{border-color:var(--accent);color:var(--accent);background:var(--accent-soft)}
 /* stats */
 :root{--d-under:#d64545;--d-par:#b3bab7;--d-b1:#6c9be0;--d-b2:#2f5fb0;--d-b3:#13285a;--bar-mute:#dfe5e1}
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--d-under:#ff7b7b;--d-par:#6b7470;--d-b1:#2d58a8;--d-b2:#86aeea;--d-b3:#d6e4fb;--bar-mute:#2f3834}}
@@ -310,6 +314,62 @@ function shrinkImage(img) {
 }
 const dataUrlKB = u => u ? Math.round(u.length * 0.75 / 1024) : 0;
 const loadDataUrl = u => new Promise((ok, no) => { const i = new Image(); i.onload = () => ok(i); i.onerror = no; i.src = u; });
+/* ================= golf course name dictionary ================= */
+// 전국 골프장 이름 목록 [지역, 이름] — 공개 목록에서 이름·지역만 추려 내장 (오프라인 동작)
+const GOLF_CLUBS = [["경기","1·2·3 골프장"],["경기","360도 CC"],["경기","88 CC"],["경기","H1 CLUB"],["전남","JNJ골프리조트"],["강원","O2리조트 골프장"],["전북","OK CC"],["강원","Oak Hills CC"],["경기","ROUTE52 CC"],["제주","SK핀크스"],["경기","YJC GC"],["전남","cosmos 1"],["제주","㈜그랜드부민 꿈드림목장"],["충남","㈜호텔롯데 스카이힐 부여 CC"],["경북","가든 GC"],["경남","가야 CC"],["경기","가평 베네스트 GC"],["충북","감곡 CC"],["경기","강남300 CC"],["인천","강화 선두리 골프장"],["경남","거제드비치 GC"],["경남","거제뷰 CC"],["경남","거창친환경대중골프장"],["세종","건설공제조합세종필드 GC"],["경남","경남스카이뷰 CC"],["경북","경주 CC"],["경북","경주신라 CC"],["충남","계룡산골프장"],["경남","고성 CC"],["경남","고성노벨 CC"],["경기","고양 CC"],["전북","고창 CC"],["경기","곤지암 GC"],["경기","골드 CC"],["충북","골드나인 CC"],["전남","골드레이크 CC"],["충남","골드리버 CC"],["충남","골든베이골프&리조트"],["전북","골프존 카운티 드래곤"],["전남","골프존카운티"],["경북","골프존카운티 감포"],["경남","골프존카운티 경남"],["경북","골프존카운티 구미"],["경남","골프존카운티 사천"],["경북","골프존카운티 선산"],["인천","골프존카운티 송도 골프장"],["경기","골프존카운티 안성H"],["경기","골프존카운티 안성W"],["전남","골프존카운티 영암"],["충북","골프존카운티 진천 CC"],["충남","골프존카운티 천안"],["충북","골프존카운티 화랑 CC"],["전북","골프존카운티무주"],["전북","골프존카운티선운"],["제주","골프존카운티오라"],["경기","골프클럽Q"],["경기","광릉CC(비회원제)"],["경기","광릉CC(회원제)"],["전남","광양 CC"],["전남","광주 CC"],["경기","광탄 CC"],["대구","구니 CC"],["경북","구미 CC"],["경기","국가보훈부 88골프장"],["전북","군산 CC"],["충북","그랜드 CC"],["경북","그레이스 CC"],["제주","그린필드 GC"],["경기","그린힐 CC"],["경기","글렌로스 GC"],["경기","금강컨트리클럽(대중)"],["경기","금강컨트리클럽(회원)"],["전북","금과골프장"],["대전","금실대덕밸리 CC"],["부산","기장동원로얄 CC"],["경기","기흥 CC"],["전북","김제스파힐스 CC"],["경기","김포 엔씨 CC"],["경기","김포SEASIDE CC"],["경기","김포씨사이드 CC"],["경남","김해상록 CC"],["경남","김해정산 CC"],["제주","나인브릿지"],["전남","나주 CC"],["전남","나주힐스 CC"],["경기","남부 CC"],["경기","남서울 CC"],["경북","남안동 CC"],["경기","남양주 CC"],["경기","남여주대중골프장"],["전북","남원상록골프장"],["경기","남촌 CC"],["강원","남춘천 CC"],["전북","내장산골프&리조트"],["충남","내포 GC"],["대구","냉천 CC"],["경기","노스팜 CC"],["경기","뉴서울 CC"],["경북","뉴스프링빌Ⅱ"],["경기","뉴스프링빌골프장"],["경기","뉴스프링빌골프장(대중형)"],["경기","뉴코리아 CC"],["경북","다산 샤인힐 CC"],["전남","다산베아채골프&리조트"],["경남","다이아몬드 CC"],["경북","대가야 CC"],["경북","대구 CC"],["대전","대덕복지센터"],["충북","대영베이스 CC"],["충북","대영힐스 CC"],["충북","대호단양 CC"],["울산","더골프골프장"],["전북","더나인 GC"],["경기","더반 GC"],["경기","더스타휴 CC"],["제주","더시에나 CC"],["경기","더크로스비 GC"],["제주","더클래식 CC"],["강원","더플레이어스 GC"],["경기","더헤븐 CC"],["충남","더힐 CC"],["충남","도고컨트리 구락부"],["충북","동 촌 CC"],["강원","동강시스타 골프장"],["부산","동래베네스트 GC"],["경남","동부산 CC"],["경기","동서울 CC"],["강원","동서울레스피아"],["강원","동원썬밸리 CC"],["경기","동탄 GC"],["인천","드림파크골프장"],["경북","디아너스 CC"],["전남","디오션 CC"],["전북","디케이레저"],["충북","떼제베운영"],["강원","라데나 GC"],["경기","라비돌 CC"],["강원","라비에벨 CC"],["경기","라싸 GC"],["제주","라온 GC"],["제주","라헨느 CC"],["전남","레이나 CC"],["경기","레이크사이드 CC"],["경기","레이크사이드CC(대중제)"],["경기","레이크사이드CC(회원제)"],["경기","레이크우드 CC"],["경기","레이크우드 골프장(비회원제)"],["경기","레이크우드 골프장(회원제)"],["경기","레이크힐스 양주 CC"],["충북","레인보우힐스"],["경기","렉스필드 CC"],["경기","렉스필드 컨트리클럽(비회원)"],["경기","렉스필드 컨트리클럽(회원)"],["강원","로드힐스 GC"],["충남","로얄링스1"],["충남","로얄링스2"],["충북","로얄포레 CC"],["경기","로제비앙 GC"],["제주","롯데스카이힐제주"],["경기","루트52 CC"],["전남","르오네뜨 CC"],["경남","리더스 CC"],["경기","리버힐 CC"],["경기","리베라 CC"],["경기","리앤리 CC"],["경기","링크나인 GC"],["충남","마론 CC"],["경북","마린 CC"],["경북","마스터피스 CC"],["경기","마에스트로 CC"],["경북","마우나오션 CC"],["경북","마우나오션블루"],["경북","마이다스 구미 골프아카데미"],["경기","마이다스 컨트리클럽 (가평)"],["경기","마이다스레이크 이천"],["경기","마이다스레이크 이천 골프&리조트"],["경기","마이다스밸리 청평 GC"],["강원","메이플비치골프&리조트"],["충북","모나크 CC"],["경기","몽베르 컨트리클럽(비회원제)"],["경기","몽베르 컨트리클럽(회원제)"],["전남","무등산 CC"],["전남","무안 CC"],["전북","무주덕유산 CC"],["경북","문경레저타운골프장"],["경남","밀양 CC"],["경남","밀양노벨 CC"],["경남","밀양에스파크골프리조트"],["경기","발리오스컨트리클럽(비회원제)"],["경기","발리오스컨트리클럽(회원제)"],["전남","백양우리 CC"],["충남","백제 CC"],["경기","베뉴지 CC"],["전남","베르힐 CC"],["인천","베르힐CC 영종"],["경기","베스트밸리 GC"],["인천","베어즈베스트청라 GC"],["경기","베어크리크 GC"],["강원","베어크리크 춘천"],["부산","베이사이드 GC"],["울산","베이스타즈 CC"],["강원","벨라45 오너스 CC"],["강원","벨라45마스터스 CC"],["강원","벨라스톤 CC"],["울산","보라골프장"],["충남","보령베이스 CC"],["경북","보문 GC"],["전남","보성 CC"],["전남","보성에덴 CC"],["제주","볼카노골프앤리조트"],["경남","부곡 CC"],["부산","부산 CC"],["제주","부영 CC"],["강원","블랙밸리 CC"],["충북","블랙스톤 CC"],["경기","블랙스톤 골프클럽 안성"],["경기","블랙스톤 이천 CC"],["경기","블랙스톤골프장(대중형)"],["경기","블랙스톤골프장(회원제)"],["제주","블랙스톤제주"],["경기","블루원 용인 CC"],["경북","블루원상주골프리조트"],["경기","블루원용인CC(비회원제)"],["경기","블루원용인CC(회원제)"],["경기","블루헤런 GC"],["경기","비에이비스타 CC"],["경기","비에이비스타골프장(회원)"],["경기","비에이비스타컨트리클럽(비회원)"],["경기","비전힐스 CC"],["강원","비콘힐스 GC"],["경기","빅토리아일반대중골프장"],["광주","빛고을 CC"],["경기","뿌리아뜨 CC"],["경기","사우스스프링스 CC"],["경남","사우스케이프오너스클럽"],["제주","사이프러스골프"],["울산","삼남골프장"],["경남","삼삼 CC"],["전북","상떼힐 CC"],["강원","샌드파인 GC"],["강원","샤인데일골프&리조트"],["제주","샤인빌파크 CC"],["경기","샴발라 CC"],["경남","서경타니 CC"],["제주","서귀포팬텀 골프앤리조트"],["경북","서라벌 GC"],["충남","서산수 골프앤리조트"],["경기","서서울 CC"],["경기","서울 CC"],["경기","서원밸리 골프장"],["경기","서원힐스 골프장"],["경기","서평택 CC"],["인천","석모도 CC"],["전북","석정힐 CC"],["경기","석천 CC"],["경북","선리치 GC"],["강원","설악썬밸리 CC"],["강원","설악프라자 CC"],["강원","설해원"],["강원","설해원더 레전드 코스"],["강원","성문안 CC"],["충북","세 일 CC"],["경기","세라지오 GC"],["충북","세레니티 CC"],["경북","세븐밸리 CC"],["전남","세이지우드 여수경도"],["강원","세이지우드CC홍천"],["세종","세종레이캐슬골프&리조트"],["세종","세종에머슨 CC"],["경기","세현 CC"],["강원","센추리21 CC"],["강원","센추리21컨트리클럽Ⅱ"],["충북","센테리움 CC"],["강원","소노펠리체 컨트리클럽 (비발디파크)"],["강원","소노펠리체 컨트리클럽 델피노"],["강원","소노펠리체 컨트리클럽 비발디파크 마운틴"],["강원","소노펠리체 컨트리클럽 비발디파크 웨스트"],["강원","소노펠리체 컨트리클럽 비발디파크 이스트"],["경기","소피아그린"],["충남","솔라고CC1"],["충남","솔라고CC2"],["전남","솔라시도 CC"],["경기","솔모로골프장"],["경기","솔트베이 GC"],["인천","송도 GC"],["경기","송추 CC"],["경기","수원 CC"],["전남","순천 CC"],["전남","순천부영 CC"],["충북","스 타 CC"],["경기","스마트KU 골프 파빌리온"],["경기","스카이밸리 CC"],["경기","스카이밸리골프장(비회원)"],["경기","스카이밸리골프장(회원)"],["부산","스톤게이트 CC"],["충남","스톤비치 CC"],["제주","스프링데일"],["강원","스프링베일리조트"],["충북","시그너스 CC"],["경북","시엘 GC"],["경기","시흥 골드 CC"],["경기","시흥 서울 CC"],["경기","시흥 파인비치 CC"],["경기","신라 CC"],["경기","신안 CC"],["경기","신안 골프클럽 (안성)"],["경기","신안 골프클럽 (화성)"],["경기","신원 CC"],["경기","신원 컨트리클럽 (용인)"],["경기","신원 컨트리클럽 (파주)"],["경기","써닝포인트 CC"],["전북","써미트 CC"],["충북","썬밸리 CC"],["경기","썬힐 GC"],["충북","아난티 중앙 GC"],["경남","아난티남해 CC"],["경기","아난티클럽서울"],["제주","아난티클럽제주"],["전북","아네스빌 CC"],["제주","아덴힐"],["경남","아델스코트 CC"],["경남","아라미르골프앤리조트"],["충남","아리스타 CC"],["경기","아리지 골프장"],["경기","아세코밸리 GC"],["경기","아시아나 CC"],["부산","아시아드 CC"],["전남","아크로 CC"],["경북","안강레전드 GC"],["경북","안동레이크 GC"],["경북","안동리버힐 CC"],["경기","안산 CC"],["경기","안산 실코 CC"],["경기","안성 CC"],["경기","안성 W GC"],["경기","안성베네스트 GC"],["경기","안성베네스트골프클럽 일반대중홀"],["경기","안양 CC"],["강원","알펜시아 700 GC"],["강원","알펜시아 CC"],["강원","알프스대영 CC"],["경북","애플밸리 CC"],["경남","양산 CC"],["경남","양산동원로얄 CC"],["경기","양주 CC"],["경기","양지파인 GC"],["경기","양평 CC"],["경기","양평 더스타"],["경기","양평TPC GC"],["광주","어등산 CC"],["경남","에덴밸리 CC"],["경기","에덴블루 CC"],["충남","에딘버러 CC"],["제주","에버리스 CC"],["충남","에스앤 골프리조트"],["충남","에스지아름다운골프&리조트"],["전북","에스페란사 GC"],["경남","에이원 CC"],["경기","에이치원 클럽"],["제주","에코랜드"],["광주","에콜리안광산골프장"],["전남","에콜리안영광골프장"],["강원","에콜리안정선골프장"],["충북","에콜리안제천"],["강원","엘리시안 강촌 CC"],["제주","엘리시안제주"],["전남","엘리체 CC"],["경북","엠스클럽의성"],["전남","여수시티파크골프&호텔"],["경기","여주 CC"],["경기","여주 블랙스톤"],["경기","여주 신라 CC"],["경기","여주썬밸리 CC"],["강원","영랑호 CC"],["경북","영천 CC"],["강원","오너스 GC"],["인천","오렌지듄스 영종 GC"],["강원","오로라 골프 앤 리조트"],["울산","오르비스 GC"],["경기","오산 CC"],["경북","오션비치 CC"],["경북","오션힐스청도 GC"],["경북","오션힐스포항 CC"],["전남","오시아노 GC"],["충북","오창 에딘버러"],["강원","오크밸리회원제골프장"],["경북","오펠 GC"],["전남","옥과기안 CC"],["충북","올데이 골프앤리조트"],["강원","올데이 옥스필드"],["경기","올림픽 골프장"],["경남","용원 CC"],["경기","용인 CC"],["강원","용평리조트 GC"],["강원","용평버치힐 GC"],["경북","우리 GC"],["충남","우정힐스 CC"],["울산","울산골프장"],["전북","웅포 CC"],["강원","월송리 CC"],["전남","웨스트오션 CC"],["강원","웰리힐리 CC"],["경기","웰링턴 CC"],["경기","윈체스트 CC"],["경기","윈체스트 골프클럽 대중"],["경북","유니밸리 CC"],["대전","유성 CC"],["경기","은화삼 CC"],["충북","음성 힐데스하임 CC"],["경남","의령 리온 CC"],["경남","의령친환경골프장"],["경기","이글몬트 CC"],["충북","이븐데일 CC"],["경기","이스트밸리 CC"],["경북","이스트힐 CC"],["대구","이지스카이 CC"],["경기","이천 CC"],["경기","이천실크밸리 GC"],["경기","이포골프장"],["전북","익산 CC"],["서울","인서울27 GC"],["인천","인천국제 CC"],["인천","인천그랜드 CC"],["경북","인터불고 CC"],["강원","인터불고원주 GC"],["경기","일동레이크 GC"],["경기","일동레이크대중제골프장"],["충북","일라이트 CC"],["충북","일레븐 CC"],["경기","일산스프링힐스 CC"],["충북","임페리얼레이크"],["경기","자유 CC"],["경기","자유로 CC"],["전북","장수골프리조트"],["인천","잭 니클라우스 골프클럽 코리아"],["전북","전주샹그릴라 CC"],["전북","전주월드컵골프장"],["강원","제이드팰리스 GC"],["경기","제일 CC"],["충북","젠스필드 CC"],["전남","조아밸리 CC"],["전남","죽향 CC"],["충북","중 원 CC"],["제주","중문 GC"],["경기","중부 CC"],["경기","지산 CC"],["충북","진양밸리 CC"],["경남","진주 CC"],["경기","참밸리 CC"],["경기","참밸리CC(코브스윙)"],["경남","창원 CC"],["전남","창평 CC"],["충북","천 룡 CC"],["충남","천안상록 골프장"],["전남","천지 CC"],["경기","청심 CC"],["경북","청통골프장"],["경북","청하이스턴 CC"],["경북","칠곡아이위시 CC"],["강원","카스카디아 GC"],["경기","캐슬렉스 GC"],["경기","캐슬렉스 서울"],["제주","캐슬렉스제주"],["경기","캐슬파인 GC"],["전북","케이밸리 CC"],["경기","켄싱턴 플로라 CC"],["경기","코리아 CC"],["충북","코스카 CC"],["제주","크라운 CC"],["경기","크리스탈밸리 CC"],["인천","클럽72"],["인천","클럽72(바다)"],["인천","클럽72(하늘)"],["경남","클럽디거창"],["충북","클럽디보은"],["충북","클럽디속리산"],["경기","클럽모우 가평"],["강원","클럽모우골프 &라이프스타일"],["전남","클린밸리 CC"],["충북","킹스데일 CC"],["충북","킹즈락 CC"],["제주","타미우스 CC"],["경기","타이거CC 골프장"],["경기","태광 CC"],["경기","태광컨트리클럽(대중제)"],["경기","태광컨트리클럽(회원제)"],["전북","태인 CC"],["제주","테디밸리"],["경남","통도파인이스트 CC"],["경남","통영동원로얄 CC"],["경기","트리니티 CC"],["경기","티클라우드 CC"],["강원","파가니카 CC"],["충남","파나시아 GC"],["경북","파라지오 CC"],["경북","파미힐스 CC"],["강원","파인리즈 CC"],["강원","파인밸리 CC"],["전남","파인비치골프링크스"],["충남","파인스톤 CC"],["경기","파인크리크 CC"],["전남","파인힐스 CC"],["경기","파주 CC"],["경기","파주 J-Public 골프장"],["경기","파주에이스 CC"],["강원","파크밸리 GC"],["대구","팔공 CC"],["경기","페럼클럽"],["경북","펜타뷰 GC"],["경기","평택 CC"],["경북","포도 CC"],["전남","포라이즌"],["경기","포레스트힐 CC"],["전북","포세븐금강 CC"],["경남","포웰CC 김해"],["경기","포웰CC 안성"],["경기","포천아도니스 CC"],["경기","포천힐마루 CC"],["경기","포천힐스 CC"],["경북","포항 CC"],["전남","푸른솔 GC"],["경기","푸른솔 골프클럽 포천"],["경기","프리스틴밸리 GC"],["경기","프리스틴밸리 컨트리클럽 (파주)"],["경기","프리스틴밸리GC (가평)"],["충남","프린세스 GC"],["충남","플라밍고 CC"],["경기","플라자 CC"],["경기","플라자CC 용인"],["경기","필로스 GC"],["경기","하슬라 CC"],["부산","하이스트 CC"],["강원","하이원 CC"],["경기","한국 CC"],["제주","한라산 CC"],["경기","한림안성"],["경기","한림용인 CC"],["경북","한맥C.C&노블리아"],["경기","한성 CC"],["경기","한성 컨트리클럽 (동두천)"],["경기","한성CC (용인)"],["경기","한양 CC"],["경기","한양파인 CC"],["경기","한원 CC"],["경기","한일 CC"],["강원","한탄강 CC"],["부산","해라 CC"],["경기","해비치 CC"],["경기","해비치 서울 CC"],["경기","해솔리아 CC"],["경기","해슬리나인브릿지 CC"],["부산","해운대 CC"],["부산","해운대비치골프앤리조트"],["전남","해피니스 CC"],["경기","호평 CC"],["경기","화도 CC"],["경기","화산 CC"],["경기","화성 GC"],["경기","화성 상록 GC"],["경기","화성실버 CC"],["경기","화성휴 CC"],["전남","화순 CC"],["강원","휘닉스 CC"],["강원","휘슬링락 CC"],["충북","히든밸리 CC"],["강원","힐드로사이 CC"],["경남","힐마루 CC"],["경기","힐마루 골프앤리조트 포천"],["경북","힐스카이 CC"],["경기","힐크레스트 CC"]];
+const clubCore = n => String(n || '').replace(/\s+/g, '').replace(/(컨트리클럽|골프클럽|골프앤리조트|골프리조트|골프장|리조트|퍼블릭|대중|회원제|C\.?C\.?|G\.?C\.?|CLUB)$/gi, '').toLowerCase();
+// consonant "sound skeleton" so an English logo can be compared with a Korean name: MONARCH ≈ 모나크 → "mnk"
+const CHO = ['k', 'k', 'n', 't', 't', 'l', 'm', 'p', 'p', 's', 's', '', 'j', 'j', 'j', 'k', 't', 'p', ''];
+const JONG = ['', 'k', 'k', 'k', 'n', 'n', 'n', 't', 'l', 'k', 'm', 'p', 'l', 'l', 'p', 'l', 'm', 'p', 'p', 's', 's', 'n', 'j', 'j', 'k', 't', 'p', ''];
+const W_VOWEL = new Set([9, 10, 11, 14, 15, 16]);
+function skelKo(s) {
+  let o = '';
+  for (const ch of String(s || '')) {
+    const c = ch.charCodeAt(0) - 0xAC00;
+    if (c >= 0 && c < 11172) { const cho = (c / 588) | 0, jung = ((c % 588) / 28) | 0, jong = c % 28; o += CHO[cho] + (W_VOWEL.has(jung) ? 'w' : '') + JONG[jong]; }
+    else if (/[a-z0-9]/i.test(ch)) o += skelEn(ch);
+  }
+  return o.replace(/(.)\1+/g, '$1');
+}
+function skelEn(s) {
+  let t = String(s || '').toLowerCase().replace(/[^a-z]/g, '');
+  t = t.replace(/ch$/, 'k').replace(/tch|ch|j|z/g, 'J').replace(/ph|f|v|b/g, 'p').replace(/ck|q|x|c(?![eiy])|g/g, 'k').replace(/c/g, 's')
+    .replace(/sh|th/g, 's').replace(/d/g, 't').replace(/ng/g, 'n').replace(/r(?=[aeiou])/g, 'l').replace(/r/g, '').replace(/[aeiouyh]/g, '').replace(/J/g, 'j');
+  return t.replace(/(.)\1+/g, '$1');
+}
+const CLUB_IDX = GOLF_CLUBS.map(([reg, name]) => ({ reg, name, core: clubCore(name), sk: skelKo(clubCore(name)) }));
+// candidates: [{text, kind:'ko'|'en', w}] read from the card → [{name, score}] best first
+function matchClubs(cands) {
+  const best = new Map(); // name → Map(candidate index → score)
+  const strongC = new Set(); // clues specific enough to fill the name on their own (not a 2-syllable fragment like "안성")
+  const add = (name, sc, ci) => { if (sc < 0.3) return; let m = best.get(name); if (!m) best.set(name, m = new Map()); if (sc > (m.get(ci) || 0)) m.set(ci, sc); };
+  (cands || []).forEach((c, ci) => {
+    if (c.kind === 'ko') {
+      const k = clubCore(c.text.replace(/[^가-힣A-Za-z0-9]/g, '')); if (k.length < 2) return;
+      if (k.length >= 3 || /CC|GC|컨트리|골프|클럽/i.test(c.text)) strongC.add(ci);
+      for (const e of CLUB_IDX) {
+        let sc = k === e.core ? 1 : similarity(k, e.core);
+        if (sc < 0.9 && k.length >= 2 && e.core.includes(k)) sc = Math.max(sc, 0.72 + 0.25 * k.length / e.core.length);
+        sc *= c.w || 1; add(e.name, sc, ci);
+      }
+    } else {
+      const words = c.text.replace(/\b(country|club|golf|resort|the|cc|gc|c\.c|g\.c|and|&)\b/gi, ' ').trim();
+      const k = skelEn(words); if (k.length < 3) return;
+      strongC.add(ci);
+      for (const e of CLUB_IDX) {
+        if (e.sk.length < 3) continue;
+        let sc = similarity(k, e.sk) * 0.95; // sound match is a little less certain than a Korean text match
+        sc *= c.w || 1; add(e.name, sc, ci);
+      }
+    }
+  });
+  // best clue + 30% of other clues agreeing (e.g. Korean "안성" + English "GOLFZON COUNTY" → 골프존카운티 안성H)
+  return [...best.entries()].map(([name, per]) => {
+    const ent = [...per.entries()].sort((a, b) => b[1] - a[1]), v = ent.map(e => e[1]);
+    return { name, strong: strongC.has(ent[0][0]) || v.length > 1, score: v[0] + 0.3 * v.slice(1).filter(x => x >= 0.55).reduce((a, b) => a + b, 0) };
+  }).sort((a, b) => b.score - a.score);
+}
+
 // 고정 동반자 그룹: 나를 뺀 동반자들의 성(첫 글자)이 그룹과 정확히 같으면(순서 무관) 실명으로 바꿉니다.
 // 예) 박**, 홍**, 이** → 박한진, 홍승수, 이종승
 const KNOWN_GROUPS = [
@@ -717,7 +777,7 @@ function blankRound() {
 let ED = null; // { r, mode, card, warn:Set }
 function openEditor(r, extra = {}) {
   return new Promise(done => {
-    ED = { r, mode: extra.mode || S.settings.inputMode || 'rel', card: extra.card || null, warn: new Set(extra.warn || []), notes: extra.notes || [], done };
+    ED = { r, clubSuggest: extra.clubSuggest || [], mode: extra.mode || S.settings.inputMode || 'rel', card: extra.card || null, warn: new Set(extra.warn || []), notes: extra.notes || [], done };
     const queued = extra.remaining > 0;
     $('#layer').innerHTML = `<div class="sheet" id="ed">
       <div class="sheet-head"><button id="edCancel">${queued ? '건너뛰기' : '취소'}</button><h3>${r.id ? '라운드 편집' : '새 라운드'}${extra.tag || ''}</h3><button id="edSave">저장</button></div>
@@ -732,7 +792,8 @@ function openEditor(r, extra = {}) {
 }
 function renderEditor() {
   const r = ED.r;
-  const clubs = [...new Set(S.rounds.map(x => x.club).filter(Boolean))];
+  const used = S.rounds.slice().sort((a, b) => b.date.localeCompare(a.date)).map(x => x.club).filter(Boolean);
+  const clubs = [...new Set([...used, ...GOLF_CLUBS.map(c => c[1])])];
   let h = '';
   if (ED.notes.length) h += `<div class="notice ${ED.notes.ok ? 'ok' : ''}">${ED.notes.map(esc).join('<br>')}</div>`;
   if (r.image) h += `<details class="img box" style="padding:8px 12px"><summary style="margin:0">스코어카드 이미지 보기</summary><img src="${r.image}" alt=""></details>`;
@@ -740,7 +801,8 @@ function renderEditor() {
     <div class="row2"><div class="fld"><label>날짜</label><input type="date" id="fDate" value="${esc(r.date)}"></div>
     <div class="fld"><label>티업 시간</label><input type="time" id="fTime" value="${esc(r.time)}"></div></div>
     <div class="fld" style="margin:0"><label>골프장</label><input type="text" id="fClub" list="clubList" placeholder="예: 벨라스톤 CC" value="${esc(r.club)}">
-    <datalist id="clubList">${clubs.map(c => `<option value="${esc(c)}">`).join('')}</datalist></div></div>`;
+    <datalist id="clubList">${clubs.map(c => `<option value="${esc(c)}">`).join('')}</datalist>
+    <div class="csugs" id="clubSug"></div></div></div>`;
   h += `<div class="box"><h4>플레이어 <button class="link" id="addPl">＋ 추가</button></h4><div id="plList"></div></div>`;
   h += `<div class="mode">입력 방식<div class="seg" id="modeSeg"><button data-m="abs">타수 (5, 4…)</button><button data-m="rel">파 대비 (+1, 0…)</button></div></div>`;
   h += `<div id="crsList"></div>`;
@@ -749,7 +811,15 @@ function renderEditor() {
   $('#edBody').innerHTML = h;
   $('#fDate').onchange = e => r.date = e.target.value;
   $('#fTime').onchange = e => r.time = e.target.value;
+  const recent = [...new Set(used)].slice(0, 4);
+  const drawSug = () => {
+    const sug = [...new Set([...ED.clubSuggest, ...recent])].filter(c => c !== r.club).slice(0, 6);
+    $('#clubSug').innerHTML = sug.length ? `<span class="csl">${ED.clubSuggest.length ? '후보' : '최근'}</span>` + sug.map(c => `<button class="csug ${ED.clubSuggest.includes(c) ? 'ai' : ''}" data-club="${esc(c)}">${esc(c)}</button>`).join('') : '';
+  };
+  drawSug();
+  $('#clubSug').onclick = e => { const b = e.target.closest('[data-club]'); if (!b) return; r.club = b.dataset.club; $('#fClub').value = r.club; drawSug(); };
   $('#fClub').oninput = e => r.club = e.target.value;
+  $('#fClub').onchange = drawSug;
   $('#fMemo').oninput = e => r.memo = e.target.value;
   $('#addPl').onclick = () => { r.players.push({ name: '', me: false, scores: r.courses.map(c => Array(c.par.length).fill(null)) }); renderPlayers(); renderCourses(); };
   $('#addCrs').onclick = () => { r.courses.push({ name: '', par: [4, 4, 3, 4, 5, 4, 3, 4, 5] }); r.players.forEach(p => p.scores.push(Array(9).fill(null))); renderCourses(); };
@@ -1304,6 +1374,29 @@ const OCR = (() => {
     cands.sort((a, b) => b.score - a.score);
     return cands[0] || null;
   }
+  // every English and Korean line in a region, as clues for the golf course name
+  async function clubLines(c, names, w = 1) {
+    const out = [];
+    const ed = (await logoW.recognize(c)).data;
+    for (const l of ed.lines || []) {
+      const t = l.text.replace(/[^A-Za-z0-9&' .\-]/g, ' ').replace(/\s+/g, ' ').trim();
+      if ((t.match(/[A-Za-z]/g) || []).length < 3 || l.confidence < 45 || /\d{2}/.test(t)) continue;
+      if (/score|card|team|date|tee|off|name|par|total|hdcp|putt|smart/i.test(t)) continue;
+      out.push({ text: t, kind: 'en', w: w * (/\b(cc|gc|club|country|golf|resort)\b/i.test(t) ? 1 : 0.95) });
+    }
+    await txtW.setParameters({ tessedit_pageseg_mode: '11' });
+    try {
+      const kd = (await txtW.recognize(c)).data;
+      for (const l of kd.lines || []) {
+        const t = l.text.replace(/\s+/g, '').replace(/[^가-힣A-Za-z0-9]/g, '');
+        if (!/[가-힣]{2,}/.test(t) || l.confidence < 40 || t.length > 16 || names.has(normName(t)) || /\d{2}/.test(t)) continue;
+        if (/스코어|카드|날짜|이름|캐디|소요|시간|구름|맑음|흐림|전국|골프장의|확인|입력|공인|셀프|차이/.test(t)) continue;
+        out.push({ text: t, kind: 'ko', w: w * (/CC|GC|컨트리|골프|클럽|리조트/i.test(t) ? 1 : 0.95) });
+      }
+    } finally { await txtW.setParameters({ tessedit_pageseg_mode: '7' }); }
+    return { lines: out, text: ed.text || '' };
+  }
+  const regionCanvas = (src, W, y0, y1) => { const c = document.createElement('canvas'); c.width = W; c.height = Math.max(1, y1 - y0); c.getContext('2d').drawImage(src, 0, y0, W, y1 - y0, 0, 0, W, y1 - y0); return c; };
   function parseTop(text) {
     const res = {}; const t = text.replace(/[Oo]/g, m => m).replace(/\s+/g, ' ');
     const dm = t.match(/(20\d{2})\s*[\/.\-년]\s*(\d{1,2})\s*[\/.\-월]\s*(\d{1,2})/);
@@ -1492,29 +1585,22 @@ const OCR = (() => {
       if (sec.rows.length) out.push(sec);
     }
     if (!out.length) return null;
-    // date / time / club from everything above the first table
+    // date / time / club: everything above the first table, plus the area below the last one (e.g. "모나크 CC" footer)
     const topY = Math.max(0, (bands[secs[0].idx - 1] && !secs[0].name ? bands[secs[0].idx - 1].y0 : secs[0].b.y0) - 4);
-    let top = {}, club = null;
+    const names = new Set(out.flatMap(s => s.rows.map(r => normName(r.name))));
+    let top = {}, club = null; const clubCands = [];
     if (topY > 30) {
-      const c = document.createElement('canvas'); c.width = G.W; c.height = topY;
-      c.getContext('2d').drawImage(G.color, 0, 0, G.W, topY, 0, 0, G.W, topY);
-      const { data } = await logoW.recognize(c); top = parseTop(data.text || '');
-      const names = new Set(out.flatMap(s => s.rows.map(r => normName(r.name))));
-      const lines = (data.lines || []).map(l => ({ t: l.text.replace(/[^A-Za-z0-9&' .\-]/g, ' ').replace(/\s+/g, ' ').trim(), h: l.bbox.y1 - l.bbox.y0, conf: l.confidence }))
-        .filter(l => (l.t.match(/[A-Za-z]/g) || []).length >= 3 && l.conf >= 50 && !/\d/.test(l.t) && !/score|card|team|date|tee|off|name|par|total/i.test(l.t) && !/^(golf|resort|country club|the)$/i.test(l.t));
-      lines.sort((a, b) => b.h - a.h || b.conf - a.conf);
-      // Korean club name line (e.g. "안성H"), skipping player names
-      await txtW.setParameters({ tessedit_pageseg_mode: '11' });
-      try {
-        const kd = (await txtW.recognize(c)).data;
-        const kl = (kd.lines || []).map(l => ({ t: l.text.replace(/\s+/g, '').replace(/[^가-힣A-Za-z0-9]/g, ''), h: l.bbox.y1 - l.bbox.y0, conf: l.confidence }))
-          .filter(l => /[가-힣]{2,}/.test(l.t) && l.conf >= 45 && l.t.length <= 12 && !names.has(normName(l.t)) && !/\d/.test(l.t) && !/스코어|카드|날짜|이름|코스|캐디|소요|시간|구름|맑음|흐림|비/.test(l.t));
-        kl.sort((a, b) => b.h - a.h || b.conf - a.conf);
-        if (kl[0]) club = { text: kl[0].t, conf: kl[0].conf };
-      } finally { await txtW.setParameters({ tessedit_pageseg_mode: '7' }); }
-      if (!club && lines[0]) club = { text: lines[0].t, conf: lines[0].conf };
+      const t = await clubLines(regionCanvas(G.color, G.W, 0, topY), names);
+      top = parseTop(t.text); clubCands.push(...t.lines);
+      club = t.lines.find(l => l.kind === 'ko') || t.lines[0] || null;
     }
-    return { top, logo: club, sections: out };
+    const lastRow = secs[secs.length - 1].rows.slice(-1)[0] || secs[secs.length - 1].b;
+    if (G.H - lastRow.py1 > 40) {
+      const t = await clubLines(regionCanvas(G.color, G.W, lastRow.py1 + 2, G.H), names);
+      clubCands.push(...t.lines);
+      if (!top.date) Object.assign(top, parseTop(t.text));
+    }
+    return { top, logo: club, clubCands, sections: out };
   }
 
   async function recognize(file, progress) {
@@ -1552,7 +1638,13 @@ const OCR = (() => {
       }
       R.push(sec);
     }
-    return { image, top, logo, sections: R };
+    let clubCands = [];
+    try {
+      const names = new Set(R.flatMap(s => s.rows.map(r => normName(r.name))));
+      if (A.topY > 30) clubCands = (await clubLines(regionCanvas(A.canvas, A.W, 0, A.topY), names)).lines;
+      if (logo) clubCands.push({ text: logo.text, kind: 'en', w: 1 });
+    } catch (e) {}
+    return { image, top, logo, clubCands, sections: R };
   }
 
   /* convert recognition result → editable round */
@@ -1620,7 +1712,10 @@ const OCR = (() => {
       if (best >= 0.6) { r.club = bestClub; clubSrc = 'memo'; }
     }
     if (!r.club && key && S.clubMap[key]) { r.club = S.clubMap[key]; clubSrc = 'memo'; }
-    if (!r.club && r.logo) { r.club = r.logo; clubSrc = 'logo'; }
+    const dict = matchClubs(res.clubCands || (res.logo ? [{ text: res.logo.text, kind: 'en' }] : []));
+    if (!r.club && dict[0] && dict[0].strong && dict[0].score >= 0.8 && (!dict[1] || dict[0].score - dict[1].score >= 0.05)) { r.club = dict[0].name; clubSrc = 'dict'; }
+    if (!r.club && dict[0] && !dict[0].strong) { clubSrc = 'ask'; } // only a short fragment (e.g. "안성"): offer candidates
+    if (!r.club && r.logo && clubSrc !== 'ask') { r.club = r.logo; clubSrc = 'logo'; }
     if (!r.club) { r.club = r.courses.map(c => S.clubMap[c.name]).find(Boolean) || ''; if (r.club) clubSrc = 'memo'; }
     let bad = 0;
     card.forEach((cs, ci) => cs.forEach((t, pi) => { if (t != null && sum(r.players[pi].scores[ci]) !== t) bad++; }));
@@ -1629,10 +1724,13 @@ const OCR = (() => {
       : '✓ 모든 줄의 합계가 스코어카드와 일치합니다. 골프장명·날짜만 확인 후 저장하세요.');
     if (bad) notes.push(...parNotes); // a misread PAR total only matters when the rows don't add up
     if (!res.top?.date) notes.push('⚠️ 날짜를 읽지 못해 선택한 날짜로 설정했습니다.');
+    if (clubSrc === 'ask') notes.push(`카드에서 "${r.logo}"만 읽혀 골프장을 확정하지 못했습니다. 골프장 칸 아래 후보에서 고르거나 입력해 주세요.`);
+    if (clubSrc === 'dict') notes.push(`골프장명은 카드의 글자로 전국 골프장 목록에서 찾은 "${r.club}"입니다. 다르면 아래 후보를 누르거나 직접 고쳐주세요.`);
     if (clubSrc === 'logo') notes.push(`골프장명은 로고에서 읽은 "${r.logo}"입니다. 원하는 이름(예: 한글)으로 고쳐 저장하면 다음부터 같은 로고는 그 이름으로 입력됩니다.`);
-    if (!r.club) notes.push('골프장명을 입력하면 다음부터 같은 로고·코스명으로 자동 입력됩니다.');
+    if (!r.club && clubSrc !== 'ask') notes.push('골프장명을 입력하면 다음부터 같은 로고·코스명으로 자동 입력됩니다.');
     notes.ok = !bad && !warn.length;
-    return { r, warn, notes, card, mode: isRel ? 'rel' : 'abs' };
+    const clubSuggest = dict.filter(d => d.score >= 0.55).slice(0, clubSrc === 'ask' ? 8 : 4).map(d => d.name);
+    return { r, warn, notes, card, mode: isRel ? 'rel' : 'abs', clubSuggest };
   }
   return { prepare, recognize, toRound, _dbg: { analyze, cellCanvas, readNum, loadImage, prepGeneric, bandsOf, hasRun, headerCols, recognizeGeneric, w: () => numW, w8: () => numW8 } };
 })();
@@ -1641,7 +1739,7 @@ async function recognizeFile(f, progress) {
   try {
     const res = await OCR.recognize(f, progress);
     const x = OCR.toRound(res, S.selected, S.settings.myName);
-    return { r: x.r, opts: { warn: x.warn, notes: x.notes, card: x.card, mode: x.mode } };
+    return { r: x.r, opts: { warn: x.warn, notes: x.notes, card: x.card, mode: x.mode, clubSuggest: x.clubSuggest } };
   } catch (err) {
     const b = blankRound();
     try {
