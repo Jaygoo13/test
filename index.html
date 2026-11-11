@@ -695,7 +695,7 @@ async function thumbInfo(id) { // { url, video } for grid tiles (video → poste
   return { url: PHOTO_URLS.get(k) || null, video };
 }
 const MAX_VIDEO_SEC = 10;
-const APP_VERSION = '2026.11.11-v21';
+const APP_VERSION = '2026.11.11-v22';
 // video poster: a frame near the start, ≤ 480px
 // video length straight from the MP4/MOV header (moov → mvhd); works even when the browser won't preload the video (iPhone Safari)
 async function movDuration(file) {
@@ -1367,14 +1367,15 @@ function openDatePicker() {
   const H = 40, cur = parseYmd(S.selected), nowY = new Date().getFullYear();
   const maxY = Math.max(nowY + 1, ...S.rounds.map(r => +String(r.date).slice(0, 4) || 0));
   const years = []; for (let v = 2015; v <= maxY; v++) years.push(v);
+  const monthOnly = S.view === 'month'; // month view: year + month only; day view: year + month + day
   let y = cur.getFullYear(), m = cur.getMonth() + 1, d = cur.getDate();
-  if (S.view === 'month' && (S.cursor.getFullYear() !== y || S.cursor.getMonth() + 1 !== m)) { y = S.cursor.getFullYear(); m = S.cursor.getMonth() + 1; d = 1; }
+  if (monthOnly && (S.cursor.getFullYear() !== y || S.cursor.getMonth() + 1 !== m)) { y = S.cursor.getFullYear(); m = S.cursor.getMonth() + 1; d = 1; }
   y = Math.min(Math.max(y, 2015), maxY);
   const played = new Set(S.rounds.map(r => r.date));
   const el = document.createElement('div'); el.className = 'dp';
-  el.innerHTML = `<div class="dp-box"><div class="dp-head"><button class="dp-x">취소</button><b>날짜 선택</b><button class="dp-ok">이동</button></div>
-    <div class="dp-wheels"><div class="dp-band"></div><div class="dp-col" data-c="y"></div><div class="dp-col" data-c="m"></div><div class="dp-col" data-c="d"></div></div>
-    <p class="dp-note"><span style="color:var(--accent)">●</span> 기록이 있는 날</p></div>`;
+  el.innerHTML = `<div class="dp-box"><div class="dp-head"><button class="dp-x">취소</button><b>${monthOnly ? '년·월 선택' : '날짜 선택'}</b><button class="dp-ok">이동</button></div>
+    <div class="dp-wheels"><div class="dp-band"></div><div class="dp-col" data-c="y"></div><div class="dp-col" data-c="m"></div>${monthOnly ? '' : '<div class="dp-col" data-c="d"></div>'}</div>
+    <p class="dp-note"><span style="color:var(--accent)">●</span> 기록이 있는 ${monthOnly ? '달' : '날'}</p></div>`;
   document.body.appendChild(el);
   const col = c => el.querySelector(`[data-c="${c}"]`);
   const days = () => new Date(y, m, 0).getDate();
@@ -1385,7 +1386,7 @@ function openDatePicker() {
   };
   const monthHas = mm => S.rounds.some(r => r.date.startsWith(`${y}-${pad(mm)}`));
   const drawM = () => fill('m', [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], m, v => v + '월', monthHas);
-  const drawD = () => { d = Math.min(d, days()); fill('d', Array.from({ length: days() }, (_, i) => i + 1), d, v => v + '일', v => played.has(`${y}-${pad(m)}-${pad(v)}`)); };
+  const drawD = () => { d = Math.min(d, days()); if (monthOnly) return; fill('d', Array.from({ length: days() }, (_, i) => i + 1), d, v => v + '일', v => played.has(`${y}-${pad(m)}-${pad(v)}`)); };
   fill('y', years, y, v => v + '년', v => S.rounds.some(r => r.date.startsWith(v + '-'))); drawM(); drawD();
   // settle on the row in the band once scrolling stops
   el.querySelectorAll('.dp-col').forEach(k => {
@@ -1404,6 +1405,8 @@ function openDatePicker() {
   el.addEventListener('click', e => { if (e.target === el) close(); });
   el.querySelector('.dp-x').onclick = close;
   el.querySelector('.dp-ok').onclick = () => {
+    // month view keeps the selected day when it's in the chosen month, otherwise the 1st
+    if (monthOnly) { const sy = cur.getFullYear(), sm = cur.getMonth() + 1; d = sy === y && sm === m ? cur.getDate() : 1; }
     S.selected = `${y}-${pad(m)}-${pad(d)}`; S.cursor = new Date(y, m - 1, 1);
     close(); render();
   };
