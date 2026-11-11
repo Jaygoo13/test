@@ -1495,7 +1495,7 @@ async function saveEditor() {
 /* ================= settings ================= */
 async function openSettings() {
   const withImg = S.rounds.filter(r => r.image), imgKB = sum(withImg.map(r => dataUrlKB(r.image))), big = withImg.filter(r => dataUrlKB(r.image) > 80).length;
-  const incImg = !!S.settings.backupImages;
+  const incImg = S.settings.backupImages !== false; // default: include photos & videos
   let media = []; try { media = await DB.photoAll(); } catch (e) {}
   const mediaMB = sum(media.map(m => (m.blob ? m.blob.size : 0) + (m.poster ? m.poster.size : 0))) / 1048576, nVid = media.filter(m => m.type === 'video').length;
   let persisted = null;
@@ -1712,7 +1712,7 @@ async function shareOrDownload(blob, name) {
   setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
 }
 async function exportBackup() {
-  const full = !!S.settings.backupImages, stamp = ymd(new Date());
+  const full = S.settings.backupImages !== false, stamp = ymd(new Date());
   const rounds = full ? S.rounds : S.rounds.map(r => ({ ...r, image: null }));
   const data = { app: 'golf-score-calendar', version: 3, exportedAt: new Date().toISOString(), images: full, settings: S.settings, clubMap: S.clubMap, rounds };
   if (!full) return shareOrDownload(new Blob([JSON.stringify(data)], { type: 'application/json' }), `golryeok-${stamp}.json`);
