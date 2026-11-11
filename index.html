@@ -322,6 +322,40 @@ table.ed td.t{min-width:40px;text-align:center;font-weight:800;font-size:14px}
 .sc-tap{position:absolute;width:22px;height:22px;margin:-11px 0 0 -11px;border-radius:50%;background:rgba(127,127,127,.5);opacity:0;z-index:5;left:256px;top:280px}
 .play .sc-tap{animation:scTap 8s infinite}
 @keyframes scTap{0%{opacity:0;left:256px;top:280px}3%{opacity:1;transform:scale(1)}6%{transform:scale(.6)}8%{opacity:1;transform:scale(1);left:256px;top:280px}15%{opacity:1;left:200px;top:196px}20%{transform:scale(1)}22%{transform:scale(.6)}24%{opacity:1;transform:scale(1);left:200px;top:196px}27%,100%{opacity:0;left:200px;top:196px}}
+/* help: check, then round diary (illustrated thumbnails) */
+.dy{width:300px;height:304px;padding:12px;background:var(--card);border-radius:18px;border:1px solid var(--line);overflow:hidden;box-shadow:0 6px 24px rgba(0,0,0,.18);font-size:10px}
+.dy-hd{display:flex;justify-content:space-between;align-items:flex-start}
+.dy-hd b{font-size:15px;display:block}.dy-hd small{color:var(--muted);font-size:9.5px}
+.dy-big{font-size:28px;font-weight:800;color:var(--accent);line-height:1;text-align:right}.dy-big small{display:block;font-size:10px;color:var(--muted)}
+.dy-chips{display:flex;flex-wrap:wrap;gap:4px;margin:7px 0 6px}
+.dy-chips span{background:var(--bg);border-radius:999px;padding:2px 8px;font-size:9.5px}.dy-chips span:first-child{background:var(--accent-soft);font-weight:700}
+.dy-t{display:grid;grid-template-columns:36px repeat(9,1fr) 26px;text-align:center;align-items:center;font-size:9px}
+.dy-t span{padding:3px 0;border-bottom:1px solid var(--line)}
+.dy-t .h{background:var(--blue);color:#fff;font-weight:700;border:0}.dy-t .h.f{border-radius:5px 0 0 0}.dy-t .h.l{border-radius:0 5px 0 0}
+.dy-t .p{background:var(--par-row);color:var(--muted);font-weight:600}
+.dy-t .n{text-align:left;padding-left:3px;font-weight:700}.dy-t .me{color:var(--accent)}
+.dy-t i{font-style:normal;display:inline-block;min-width:13px;border-radius:3px}.dy-t i.o{background:#26354f;color:#cfe0ff}.dy-t i.b{background:#7a2b2b;color:#ffd5d5}
+.dy-t em{font-style:normal;font-weight:800}.dy-t em u{text-decoration:none;color:var(--ok);font-size:8px;margin-left:1px;opacity:0}
+.play .dy-t em u{animation:dyPop 9s infinite}
+@keyframes dyPop{0%,6%{opacity:0}10%,95%{opacity:1}100%{opacity:0}}
+.dy-ph{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-top:9px}
+.dy-ph div{aspect-ratio:1;border-radius:7px;overflow:hidden;position:relative;opacity:0;transform:scale(.6)}
+.dy-ph svg{width:100%;height:100%;display:block}
+.play .dy-ph div{animation:dyIn 9s cubic-bezier(.2,1.4,.4,1) infinite}
+.play .dy-ph div:nth-child(2){animation-delay:.35s}.play .dy-ph div:nth-child(3){animation-delay:.7s}
+@keyframes dyIn{0%,18%{opacity:0;transform:scale(.6)}24%,95%{opacity:1;transform:none}100%{opacity:0}}
+.dy-play{position:absolute;right:4px;top:4px;width:16px;height:16px;border-radius:50%;background:rgba(0,0,0,.35);display:grid;place-items:center;color:#fff;font-size:8px;padding-left:1px}
+.dy-arm{transform-box:fill-box;transform-origin:50% 0}
+.play .dy-arm{animation:dySwing 2.2s ease-in-out infinite}
+@keyframes dySwing{0%,15%{transform:rotate(55deg)}45%{transform:rotate(150deg)}60%{transform:rotate(-40deg)}75%,100%{transform:rotate(-120deg)}}
+.play .dy-ball{animation:dyRoll 3s ease-out infinite}
+@keyframes dyRoll{0%,20%{transform:translateX(0)}70%,100%{transform:translateX(22px)}}
+.play .dy-flash{animation:dyFlash 3s infinite}
+@keyframes dyFlash{0%,46%{opacity:0}50%{opacity:.8}60%,100%{opacity:0}}
+.dy-memo{margin-top:8px;font-size:10.5px;line-height:1.5;white-space:nowrap;overflow:hidden;width:0;max-width:100%;border-right:1.5px solid var(--accent);padding-right:1px}
+.play .dy-memo{animation:dyType 9s steps(26) infinite,dyCaret .8s step-end infinite}
+@keyframes dyType{0%,34%{width:0}62%,95%{width:170px}100%{width:0}}
+@keyframes dyCaret{50%{border-color:transparent}}
 /* help: phone simulation (add to home screen) */
 .ob-art.tall{flex:1 1 0;height:auto;min-height:140px;width:100%;margin:4px 0 14px;overflow:hidden;place-items:start center}
 .ob-art.tall>.mph,.ob-art.tall>.fitbox{transform-origin:top center}
@@ -2846,11 +2880,32 @@ const ONBOARD = (() => {
     ${ssCard('c3', 'Bella Stone', 'GOLF &amp; RESORT', '2026/10/03', 'AM 07:59', 82, '스톤', [5, 4, 4, 3, 4, 5, 3, 4, 4], [['홍길동', [0, 1, 2, 0, 1, 0, 1, -1, 0]], ['박**', [0, 0, 0, 0, 2, 1, 0, 0, 1]], ['최**', [0, 1, 2, 2, 2, 2, 2, 1, 0]], ['이**', [0, 2, 1, 1, 2, 1, 1, 1, 1]]])}
     <span class="sc-line"></span><span class="sc-ok">✓ 3장 인식 · 날짜·타수 자동 입력</span>
     <div class="sc-menu"><div class="go">📷 스코어카드 이미지로 추가</div><div>✏️ 직접 입력</div></div><span class="mk-fab">＋</span><span class="sc-tap"></span></div>`;
-  const check = () => `<div class="mk"><div style="font-size:11px;font-weight:700;color:var(--muted)">골프장</div><div class="mk-chips"><span>벨라스톤 CC</span><span>모나크 CC</span><span>골드 CC</span></div>
-    <div class="mk-tbl"><div class="h"><span>홀</span><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>합</span></div>
-    <div><span>나</span><span>0</span><span>1</span><span>0</span><span>2</span><span>-1</span><em>45 ✓</em></div>
-    <div><span>동반자</span><span>1</span><span>0</span><span>0</span><span>1</span><span>0</span><em>40 ✓</em></div>
-    <div><span>동반자</span><span>0</span><span>2</span><span>1</span><span>0</span><span>1</span><em>48 ✓</em></div></div></div>`;
+  // illustrated (not real) diary thumbnails: misty course, a swing, a group shot, a putt
+  const dyScene = (sky, hill1, hill2, grass, extra) => `<svg viewBox="0 0 60 60"><defs><linearGradient id="g${sky.slice(1)}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${sky}"/><stop offset="1" stop-color="#e9eef0"/></linearGradient></defs>
+    <rect width="60" height="60" fill="url(#g${sky.slice(1)})"/><path d="M0 30 Q12 18 24 27 T48 22 T60 26 V60 H0Z" fill="${hill1}"/><path d="M0 36 Q15 28 30 34 T60 31 V60 H0Z" fill="${hill2}"/>
+    <path d="M0 42 Q30 37 60 42 V60 H0Z" fill="${grass}"/>${extra}</svg>`;
+  const person = (x, y, jacket, cap) => `<g transform="translate(${x} ${y})"><circle cx="0" cy="-12" r="2.6" fill="#f1c9a5"/><path d="M-2.8 -13 h5.6 l-.6-2.2 h-4.4z" fill="${cap}"/>
+    <rect x="-3.6" y="-9.4" width="7.2" height="8" rx="2.4" fill="${jacket}"/><rect x="-3" y="-1.6" width="2.4" height="6" rx="1" fill="#222"/><rect x=".6" y="-1.6" width="2.4" height="6" rx="1" fill="#222"/></g>`;
+  const check = () => {
+    const S1 = [0, 1, 2, 2, 1, 0, 1, 2, 0], S2 = [0, 0, 0, 0, 2, 1, 0, -1, 1];
+    const cell = v => `<span><i class="${v < 0 ? 'b' : v > 0 ? 'o' : ''}">${v}</i></span>`;
+    const swing = dyScene('#b9c3c9', '#7f8f86', '#5d7a62', '#5f9a52', `<rect x="18" y="47" width="22" height="5" fill="#3f8f3f"/><circle class="dy-ball" cx="33" cy="47.6" r="1.2" fill="#fff"/>
+      <g transform="translate(26 48)"><circle cx="0" cy="-15" r="2.8" fill="#f1c9a5"/><path d="M-3 -16 h6 l-.6-2.4 h-4.8z" fill="#fff"/><rect x="-4" y="-12.4" width="8" height="9" rx="2.6" fill="#1f2937"/>
+      <rect x="-3.4" y="-3.6" width="2.6" height="7" rx="1" fill="#111"/><rect x=".8" y="-3.6" width="2.6" height="7" rx="1" fill="#111"/>
+      <g class="dy-arm" transform="translate(0 -10)"><rect x="-.8" y="0" width="1.6" height="7" fill="#1f2937"/><rect x="-.4" y="7" width=".8" height="9" fill="#ccc"/></g></g>`);
+    const group = dyScene('#c7ced2', '#8a9a8f', '#6c8b6a', '#77aa5a', person(17, 50, '#1e2a4a', '#fff') + person(26, 49, '#2f6fd1', '#1e2a4a') + person(35, 50, '#5d8fd6', '#fff') + person(44, 49, '#2b2f36', '#2b2f36')
+      + '<rect class="dy-flash" width="60" height="60" fill="#fff" opacity="0"/>');
+    const putt = dyScene('#c9c6bd', '#b4793e', '#8e6b3c', '#6aa257', `<ellipse cx="44" cy="51" rx="2.4" ry="1" fill="#1b3a1b"/><rect x="43.6" y="38" width=".8" height="13" fill="#eee"/><path d="M44.4 38 l6 2 -6 2z" fill="#e94040"/>
+      <circle class="dy-ball" cx="22" cy="51" r="1.2" fill="#fff"/>${person(16, 52, '#1f2937', '#fff')}`);
+    return `<div class="dy fitbox"><div class="dy-hd"><span><b>벨라스톤 CC</b><small>티업 07:59 · 스톤 / 벨라</small></span><span class="dy-big">82<small>+10</small></span></div>
+      <div class="dy-chips"><span>홍길동 82 (+10)</span><span>김** 79 (+7)</span><span>최** 88 (+16)</span></div>
+      <div class="dy-t"><span class="h f">스톤</span>${[1, 2, 3, 4, 5, 6, 7, 8, 9].map(h => `<span class="h">${h}</span>`).join('')}<span class="h l">T</span>
+        <span class="p n">PAR</span>${[5, 4, 4, 3, 4, 5, 3, 4, 4].map(v => `<span class="p">${v}</span>`).join('')}<span class="p">36</span>
+        <span class="n me">홍길동</span>${S1.map(cell).join('')}<span><em>45<u>✓</u></em></span>
+        <span class="n">김**</span>${S2.map(cell).join('')}<span><em>39<u>✓</u></em></span></div>
+      <div class="dy-ph"><div>${swing}<span class="dy-play">▶</span></div><div>${group}</div><div>${putt}<span class="dy-play">▶</span></div></div>
+      <div class="dy-memo">종일 우중 라운드. 첫 버디 성공! ⛳</div></div>`;
+  };
   const buddies = () => `<div class="mk"><div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:10px">스코어카드의 동반자</div>
     <div class="mk-swap">${[['박**', '박철수'], ['홍**', '홍길동'], ['이**', '이영희']].map(([a, b2]) => `<span class="sw"><i class="a">${a}</i><i class="b">${b2}</i></span>`).join('')}</div>
     <div class="mk-rule"><span>⚙︎ 자주하는 동반자</span><b>박철수 · 홍길동 · 이영희</b></div></div>`;
@@ -2873,7 +2928,7 @@ const ONBOARD = (() => {
     { art: cal, tall: true, h: '스코어카드 사진만 넣으면<br>달력에 기록돼요', p: ['골프장·티업 시간·내 타수·동반자 타수가 날짜별로 정리됩니다.', '기록은 서버가 아니라 <b>내 폰에만</b> 저장돼요.'] },
     { art: home, tall: true, h: '홈 화면에 추가하세요', p: [INSTALL.standalone() ? '✓ 이미 홈 화면 앱으로 실행 중이에요.' : ios ? '<b>스코어카드를 넣기 전에 먼저</b> 추가하세요.<br>공유 버튼 → 홈 화면에 추가 → 추가<br>그다음 홈 화면 아이콘으로 열어서 쓰세요.' : '<b>스코어카드를 넣기 전에 먼저</b> 추가하세요.<br>아래 버튼을 누르면 설치 창이 떠요.'], install: !INSTALL.standalone() },
     { art: scan, tall: true, h: '＋ 버튼으로 스코어카드 사진 추가', p: ['오른쪽 아래 <b>＋</b> → <b>스코어카드 이미지로 추가</b>', '여러 장을 한 번에 골라도 돼요. 날짜·홀별 타수를 자동으로 읽어요.'] },
-    { art: check, h: '확인하고 저장', p: ['카드 합계와 맞으면 <b>✓</b>, 다르면 빨간색으로 알려줘요.', '골프장은 <b>후보 버튼</b>을 누르거나 입력하고, 틀린 칸만 고친 뒤 저장하세요.'] },
+    { art: check, tall: true, h: '확인하고 라운딩 일기 쓰기', p: ['카드 합계와 맞으면 <b>✓</b>, 틀린 칸만 고친 뒤 저장하세요.', '그날의 <b>영상·사진</b>과 <b>짧은 메모</b>를 붙여 나만의 골프 일기를 남겨보세요. 영상은 10초 이내로 올릴 수 있어요.'] },
     { art: views, h: '기록 보기와 백업', p: ['<b>월간·일간·통계</b>로 나의 골프 기록을 확인하세요.', '폰을 바꿀 때를 대비해 <b>⚙︎ 설정 → 백업 내보내기</b>를 가끔 해두세요.'] },
     ...(help ? [
       { art: buddies, h: '자주하는 동반자 이름 규칙', p: ['스코어카드에는 동반자가 <b>박**, 홍**, 이**</b>처럼 성만 나와요.', '자주 함께 치는 동반자를 <b>⚙︎ 설정 → 자주하는 동반자 이름 규칙</b>에 한 번 등록하면, 성이 모두 맞을 때 <b>실명으로 자동</b> 바뀌어요.'] },
