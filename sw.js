@@ -18,7 +18,7 @@ self.addEventListener('fetch', e => {
   if (url.origin === location.origin) {
     // 앱 파일: 네트워크 우선 + 브라우저 HTTP 캐시 무시(항상 최신 버전 확인), 오프라인이면 저장해 둔 사본
     e.respondWith(fetch(req, { cache: 'no-cache' }).then(res => {
-      if (res.ok) { const copy = res.clone(); caches.open(SHELL_CACHE).then(c => c.put(req, copy)); }
+      if (res.ok && !url.search) { const copy = res.clone(); caches.open(SHELL_CACHE).then(c => c.put(req, copy)); } // ?v= update checks aren't kept
       return res;
     }).catch(() => caches.match(req, { ignoreSearch: true }).then(r => r || caches.match('./index.html'))));
     return;

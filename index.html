@@ -695,7 +695,7 @@ async function thumbInfo(id) { // { url, video } for grid tiles (video → poste
   return { url: PHOTO_URLS.get(k) || null, video };
 }
 const MAX_VIDEO_SEC = 10;
-const APP_VERSION = '2026.11.11-v22';
+const APP_VERSION = '2026.11.11-v23';
 // video poster: a frame near the start, ≤ 480px
 // video length straight from the MP4/MOV header (moov → mvhd); works even when the browser won't preload the video (iPhone Safari)
 async function movDuration(file) {
@@ -3220,6 +3220,22 @@ function installGate() {
   el.querySelector('#gateSkip').onclick = () => { el.remove(); INSTALL.skipGate(); updateNudge(); openAddMenu(true); };
 }
 
+/* ================= auto-update: a home-screen app can stay in memory for days ================= */
+async function checkUpdate() {
+  if (!location.protocol.startsWith('http') || !navigator.onLine) return;
+  try {
+    const t = await (await fetch('index.html?v=' + Date.now(), { cache: 'no-store' })).text();
+    const v = (t.match(/APP_VERSION = '([^']+)'/) || [])[1];
+    if (!v || v === APP_VERSION) return;
+    // don't pull the page away while something is being edited or picked
+    if ($('#layer').innerHTML.trim() || document.querySelector('.dp, .ob, .guide')) return;
+    toast('새 버전으로 업데이트합니다'); setTimeout(() => location.reload(), 800);
+  } catch (e) {}
+}
+let lastCheck = 0;
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && Date.now() - lastCheck > 60000) { lastCheck = Date.now(); checkUpdate(); }
+});
 /* ================= boot ================= */
 (async () => {
   await loadAll();
