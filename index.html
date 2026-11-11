@@ -514,6 +514,9 @@ table.ed td.t{min-width:40px;text-align:center;font-weight:800;font-size:14px}
 .csugs .csl{font-size:12px;color:var(--muted);font-weight:600;margin-right:2px}
 .csug{border:1px solid var(--line);background:var(--bg);border-radius:999px;padding:5px 11px;font-size:13px;font-weight:600}
 .csug.ai{border-color:var(--accent);color:var(--accent);background:var(--accent-soft)}
+.csug b{display:inline-grid;place-items:center;width:16px;height:16px;border-radius:50%;background:var(--line);font-size:10px;margin-right:5px;vertical-align:1px}
+.csug.ai b{background:var(--accent);color:var(--accent-text)}
+.csug small{display:block;font-size:10px;font-weight:500;color:var(--muted);margin-top:1px;text-align:left;padding-left:21px}
 /* stats */
 :root{--d-under:#d64545;--d-par:#b3bab7;--d-b1:#6c9be0;--d-b2:#2f5fb0;--d-b3:#13285a;--bar-mute:#dfe5e1}
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--d-under:#ff7b7b;--d-par:#6b7470;--d-b1:#2d58a8;--d-b2:#86aeea;--d-b3:#d6e4fb;--bar-mute:#2f3834}}
@@ -676,7 +679,7 @@ async function thumbInfo(id) { // { url, video } for grid tiles (video → poste
   return { url: PHOTO_URLS.get(k) || null, video };
 }
 const MAX_VIDEO_SEC = 10;
-const APP_VERSION = '2026.11.11-v19';
+const APP_VERSION = '2026.11.11-v20';
 // video poster: a frame near the start, ≤ 480px
 // video length straight from the MP4/MOV header (moov → mvhd); works even when the browser won't preload the video (iPhone Safari)
 async function movDuration(file) {
@@ -845,6 +848,100 @@ function canonicalClub(name, min = 0.85) {
   const m = matchClubs([{ text: name, kind: /[가-힣]/.test(name) ? 'ko' : 'en' }]);
   if (m[0] && m[0].strong && m[0].score >= min && (!m[1] || m[0].score - m[1].score >= 0.05)) return m[0];
   return null;
+}
+/* ===== club name guess: learn from my own saved rounds =====
+   Each 9-hole course is remembered as "course name + PAR order" (스톤|544345344) → club.
+   Built straight from saved rounds, so old records count at once, edits/deletes follow, and
+   27/36-hole clubs work whatever pair is played (A-B, B-C, C-A: each course is learnt on its own). */
+const parKey = par => (par || []).map(v => +v || 0).join('');
+const okPar = pk => pk.length === 9 && /^[3-6]+$/.test(pk) && !/^(.)\1+$/.test(pk); // 444444444 = PAR not really read
+const crsNorm = n => String(n || '').toLowerCase().replace(/[^a-z0-9가-힣]/g, '').replace(/(코스|course)$/, '');
+const _canon = new Map();
+const clubKey = n => { n = String(n || '').trim(); if (!_canon.has(n)) { const c = canonicalClub(n); _canon.set(n, c ? c.name : n); } return _canon.get(n); };
+function courseIndex(skipId) {
+  const idx = [];
+  for (const r of S.rounds) {
+    if (!r.club || r.id === skipId) continue;
+    const club = clubKey(r.club);
+    (r.courses || []).forEach(c => { const pk = parKey(c.par); if (okPar(pk)) idx.push({ club, name: crsNorm(c.name), pk, date: r.date }); });
+  }
+  return idx;
+}
+const hamming = (a, b) => { let d = 0; for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) d++; return d; };
+// → { club (auto-filled or ''), why, cands:[{name, why, score}] best first }
+function clubGuess(r, dict, skipId, parBad) { // parBad: Set of course indexes whose PAR wasn't read
+  const C = new Map();
+  const add = (name, sc, why) => {
+    if (!name || !(sc > 0)) return; name = clubKey(name);
+    let e = C.get(name); if (!e) C.set(name, e = new Map());
+    if (sc > (e.get(why) || 0)) e.set(why, sc);
+  };
+  // 1) course name + PAR fingerprint from saved rounds
+  const idx = courseIndex(skipId), perClub = new Map(), count = new Map(), last = new Map();
+  idx.forEach(e => { count.set(e.club, (count.get(e.club) || 0) + 1); if ((last.get(e.club) || '') < e.date) last.set(e.club, e.date); });
+  (r.courses || []).forEach((c, ci) => {
+    const pk = parKey(c.par), cn = crsNorm(c.name); if (!okPar(pk) || (parBad && parBad.has(ci))) return;
+    for (const e of idx) {
+      const nameOk = cn && e.name && similarity(cn, e.name) >= 0.75;
+      let sc = 0, why = '';
+      if (e.pk === pk) { sc = nameOk ? 0.95 : (cn && e.name) ? 0.72 : 0.8; why = nameOk ? '코스·PAR 일치' : 'PAR 일치'; }
+      else if (nameOk && cn.length >= 2 && hamming(pk, e.pk) === 1) { sc = 0.7; why = '코스명 일치'; }
+      if (!sc) continue;
+      let m = perClub.get(e.club); if (!m) perClub.set(e.club, m = []);
+      if (!m[ci] || sc > m[ci].sc) m[ci] = { sc, why };
+    }
+  });
+  for (const [club, m] of perClub) {
+    const hits = m.filter(Boolean).sort((a, b) => b.sc - a.sc);
+    const sc = hits[0].sc + (hits.length > 1 && hits[1].sc >= 0.7 ? 0.08 : 0); // both courses agree
+    add(club, Math.min(1, sc), hits[0].why);
+  }
+  // 2) remembered logo (from cards I saved before)
+  const lg = normLogo(r.logo);
+  if (lg.length >= 3) for (const k in S.clubMap) if (k.startsWith('logo:')) {
+    const sm = similarity(lg, k.slice(5)); if (sm >= 0.6) add(S.clubMap[k], sm >= 0.85 ? 0.9 * sm : 0.55 * sm, '로고 기억');
+  }
+  // 3) remembered course names alone: weak (힐/레이크/OUT exist at many clubs)
+  const pair = (r.courses || []).map(c => c.name).filter(Boolean).join('|');
+  if (pair.includes('|') && S.clubMap[pair]) add(S.clubMap[pair], 0.55, '코스명 기억');
+  (r.courses || []).forEach(c => { if (c.name && S.clubMap[c.name]) add(S.clubMap[c.name], 0.4, '코스명 기억'); });
+  // 4) text on the card vs the national list
+  (dict || []).slice(0, 8).forEach(d => add(d.name, d.strong ? Math.min(d.score, 1) : d.score * 0.7, '카드 글자'));
+  // 5) a Latin wordmark that isn't in the list (new club): offer it as typed, never auto-fill
+  if (r.logo && !/[가-힣]/.test(r.logo) && normLogo(r.logo).length >= 4) add(r.logo.trim(), 0.3, '로고 글자');
+  const ranked = [...C.entries()].map(([name, per]) => {
+    const v = [...per.entries()].sort((a, b) => b[1] - a[1]);
+    let score = v[0][1] + 0.3 * v.slice(1).filter(x => x[1] >= 0.5).reduce((a, x) => a + x[1], 0); // independent clues agree
+    if (count.has(name)) score += 0.02 * Math.min(count.get(name), 5); // been there before
+    return { name, why: v.map(x => x[0]).filter((w, i, a) => a.indexOf(w) === i).slice(0, 2).join(' · '), score };
+  }).filter(x => x.score >= 0.35).sort((a, b) => b.score - a.score);
+  // fill with recent clubs so there is always something to tap
+  const recent = [...new Set(S.rounds.slice().sort((a, b) => b.date.localeCompare(a.date)).map(x => x.club && clubKey(x.club)).filter(Boolean))];
+  for (const n of recent) { if (ranked.length >= 6) break; if (!ranked.some(x => x.name === n)) ranked.push({ name: n, why: '최근', score: 0 }); }
+  const [a, b] = ranked;
+  const auto = a && a.score >= 0.8 && (!b || a.score - b.score >= 0.06);
+  return { club: auto ? a.name : '', why: auto ? a.why : '', cands: ranked.slice(0, 6) };
+}
+// typed search: substring (spaces ignored) or initial consonants (ㅂㄹㅅㅌ), my clubs first, then fuzzy
+const CHOS = 'ㄱㄲㄴㄷㄸㄹㅁㅂㅃㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎ';
+const choOf = s => [...String(s)].map(ch => { const c = ch.charCodeAt(0) - 0xAC00; return c >= 0 && c < 11172 ? CHOS[(c / 588) | 0] : ch; }).join('');
+function searchClubs(q, names, mine) {
+  const k = q.replace(/\s+/g, '').toLowerCase(); if (!k) return [];
+  const isCho = /^[ㄱ-ㅎ]+$/.test(k), mineSet = new Set((mine || []).map(clubKey));
+  const scored = [];
+  for (const n of names) {
+    const flat = n.replace(/\s+/g, '').toLowerCase(), hay = isCho ? choOf(flat) : flat, at = hay.indexOf(k);
+    if (at >= 0) scored.push({ n, s: (mineSet.has(n) ? 2 : 0) + (at === 0 ? 1 : 0) - flat.length / 100 });
+  }
+  if (scored.length < 4 && !isCho && k.length >= 2) // typo / English spelling: fuzzy against the list
+    matchClubs([{ text: q, kind: /[가-힣]/.test(q) ? 'ko' : 'en' }]).slice(0, 6).forEach(m => { if (m.score >= 0.65 && !scored.some(x => x.n === m.name)) scored.push({ n: m.name, s: m.score - 1 }); });
+  return scored.sort((a, b) => b.s - a.s).map(x => x.n);
+}
+function clubNote(g) {
+  if (!g.club) return '골프장을 확정하지 못했어요. 골프장 칸 아래 후보(가능성 높은 순)에서 고르거나 입력해 주세요.';
+  if (/코스·PAR|PAR 일치|코스명 일치/.test(g.why)) return `골프장명은 지난 기록과 코스·PAR이 같은 "${g.club}"입니다. 다르면 아래 후보를 누르거나 고쳐주세요.`;
+  if (/로고 기억/.test(g.why)) return `골프장명은 지난번 같은 로고 카드의 "${g.club}"입니다. 다르면 아래 후보를 누르거나 고쳐주세요.`;
+  return `골프장명은 카드의 글자로 전국 골프장 목록에서 찾은 "${g.club}"입니다. 다르면 아래 후보를 누르거나 고쳐주세요.`;
 }
 // 자주하는 동반자 이름 규칙 (설정에서 편집): 나를 뺀 동반자들의 성(첫 글자)이 규칙과 정확히 같으면(순서 무관) 실명으로 바꿉니다.
 // 예) 박**, 홍**, 이** + 규칙 [박철수, 홍길동, 이영희] → 박철수, 홍길동, 이영희
@@ -1332,15 +1429,14 @@ function openEditor(r, extra = {}) {
 function renderEditor() {
   const r = ED.r;
   const used = S.rounds.slice().sort((a, b) => b.date.localeCompare(a.date)).map(x => x.club).filter(Boolean);
-  const clubs = [...new Set([...used, ...GOLF_CLUBS.map(c => c[1])])];
+  const clubs = [...new Set([...used.map(clubKey), ...GOLF_CLUBS.map(c => c[1])])];
   let h = '';
   if (ED.notes.length) h += `<div class="notice ${ED.notes.ok ? 'ok' : ''}">${ED.notes.map(esc).join('<br>')}</div>`;
   if (r.image) h += `<details class="img box" style="padding:8px 12px"><summary style="margin:0">스코어카드 이미지 보기</summary><img src="${r.image}" alt=""></details>`;
   h += `<div class="box">
     <div class="row2"><div class="fld"><label>날짜</label><input type="date" id="fDate" value="${esc(r.date)}"></div>
     <div class="fld"><label>티업 시간</label><input type="time" id="fTime" value="${esc(r.time)}"></div></div>
-    <div class="fld" style="margin:0"><label>골프장</label><input type="text" id="fClub" list="clubList" placeholder="예: 벨라스톤 CC" value="${esc(r.club)}">
-    <datalist id="clubList">${clubs.map(c => `<option value="${esc(c)}">`).join('')}</datalist>
+    <div class="fld" style="margin:0"><label>골프장</label><input type="text" id="fClub" placeholder="예: 벨라스톤 CC (일부만 쳐도 찾아요)" autocomplete="off" value="${esc(r.club)}">
     <div class="csugs" id="clubSug"></div></div></div>`;
   h += `<div class="box"><h4>플레이어 <button class="link" id="addPl">＋ 추가</button></h4><div id="plList"></div></div>`;
   h += `<div class="mode">입력 방식<div class="seg" id="modeSeg"><button data-m="abs">타수 (5, 4…)</button><button data-m="rel">파 대비 (+1, 0…)</button></div></div>`;
@@ -1352,15 +1448,28 @@ function renderEditor() {
   $('#edBody').innerHTML = h;
   $('#fDate').onchange = e => r.date = e.target.value;
   $('#fTime').onchange = e => r.time = e.target.value;
-  const recent = [...new Set(used)].slice(0, 4);
+  const recent = [...new Set(used.map(clubKey))].slice(0, 4);
+  const cands = (ED.clubSuggest || []).map(c => typeof c === 'string' ? { name: c, why: '' } : c);
+  let query = '';
+  const chip = (c, k, hi) => `<button class="csug ${hi ? 'ai' : ''}" data-club="${esc(c.name)}">${k != null ? `<b>${k + 1}</b>` : ''}${esc(c.name)}${c.why ? `<small>${esc(c.why)}</small>` : ''}</button>`;
   const drawSug = () => {
-    const sug = [...new Set([...ED.clubSuggest, ...recent])].filter(c => c !== r.club).slice(0, 6);
-    $('#clubSug').innerHTML = sug.length ? `<span class="csl">${ED.clubSuggest.length ? '후보' : '최근'}</span>` + sug.map(c => `<button class="csug ${ED.clubSuggest.includes(c) ? 'ai' : ''}" data-club="${esc(c)}">${esc(c)}</button>`).join('') : '';
+    let h = '';
+    if (query) { // typing: search the national list + my clubs
+      const hits = searchClubs(query, clubs, used).filter(c => c !== r.club).slice(0, 8);
+      h = hits.length ? `<span class="csl">검색</span>` + hits.map(n => chip({ name: n })).join('') : '<span class="csl">목록에 없어요 — 입력한 이름 그대로 저장돼요</span>';
+    } else if (cands.length) {
+      const list = cands.filter(c => c.name !== r.club);
+      h = list.length ? `<span class="csl">${r.club ? '다른 후보' : '후보 (가능성 높은 순)'}</span>` + list.map((c, k) => chip(c, k, k === 0 && !r.club)).join('') : '';
+    } else {
+      const list = recent.filter(c => c !== r.club);
+      h = list.length ? '<span class="csl">최근</span>' + list.map(n => chip({ name: n })).join('') : '';
+    }
+    $('#clubSug').innerHTML = h;
   };
   drawSug();
-  $('#clubSug').onclick = e => { const b = e.target.closest('[data-club]'); if (!b) return; r.club = b.dataset.club; $('#fClub').value = r.club; drawSug(); };
-  $('#fClub').oninput = e => r.club = e.target.value;
-  $('#fClub').onchange = drawSug;
+  $('#clubSug').onclick = e => { const b = e.target.closest('[data-club]'); if (!b) return; r.club = b.dataset.club; $('#fClub').value = r.club; query = ''; drawSug(); };
+  $('#fClub').oninput = e => { r.club = e.target.value; query = e.target.value.trim(); drawSug(); };
+  $('#fClub').onchange = () => { query = ''; drawSug(); };
   $('#fMemo').oninput = e => r.memo = e.target.value;
   $('#addPh').onclick = () => { $('#photoIn').value = ''; $('#photoIn').click(); };
   renderEdPhotos();
@@ -1512,10 +1621,10 @@ async function saveEditor() {
   r.photos = keep;
   try { await DB.put(r); } catch (e) { return toast('저장 실패: ' + e.message, 4000); }
   const i = S.rounds.findIndex(x => x.id === r.id); if (i >= 0) S.rounds[i] = r; else S.rounds.push(r);
-  // remember course → club mapping, and my name
+  // remember course-pair / logo → club, and my name
   const key = r.courses.map(c => c.name).filter(Boolean).join('|');
   if (r.club && (key || r.logo)) {
-    if (key) { S.clubMap[key] = r.club; r.courses.forEach(c => { if (c.name) S.clubMap[c.name] = r.club; }); }
+    if (key && key.includes('|')) S.clubMap[key] = r.club; // course+PAR fingerprints come from the saved rounds themselves
     if (r.logo && normLogo(r.logo).length >= 3) S.clubMap['logo:' + normLogo(r.logo)] = r.club;
     DB.set('clubMap', S.clubMap).catch(() => {});
   }
@@ -2652,23 +2761,11 @@ const OCR = (() => {
     if (mi < 0) { mi = 0; if (mine) notes.push(`⚠️ 카드에서 "${myName}"을(를) 찾지 못해 첫 줄을 '나'로 표시했어요. 내 줄의 [나] 버튼을 눌러주세요.`); }
     if (r.players[mi]) r.players[mi].me = true;
     applyKnownGroups(r);
-    // club name: 1) remembered logo (fuzzy)  2) remembered course pair  3) logo text as read  4) single course name
-    const key = r.courses.map(c => c.name).filter(Boolean).join('|');
-    let clubSrc = '';
-    const lg = normLogo(r.logo);
-    if (lg.length >= 3) {
-      let best = 0, bestClub = '';
-      for (const k in S.clubMap) if (k.startsWith('logo:')) { const sm = similarity(lg, k.slice(5)); if (sm > best) { best = sm; bestClub = S.clubMap[k]; } }
-      if (best >= 0.6) { r.club = bestClub; clubSrc = 'memo'; }
-    }
-    if (!r.club && key && S.clubMap[key]) { r.club = S.clubMap[key]; clubSrc = 'memo'; }
-    if (clubSrc === 'memo') { const c = canonicalClub(r.club); if (c) r.club = c.name; }
+    // club name: ranked guess from my saved rounds (course + PAR), remembered logos and the card text
     const dict = matchClubs(res.clubCands || (res.logo ? [{ text: res.logo.text, kind: 'en' }] : []));
-    if (!r.club && dict[0] && dict[0].strong && dict[0].score >= 0.8 && (!dict[1] || dict[0].score - dict[1].score >= 0.05)) { r.club = dict[0].name; clubSrc = 'dict'; }
-    if (!r.club && dict[0] && !dict[0].strong) { clubSrc = 'ask'; } // only a short fragment (e.g. "안성"): offer candidates
-    // raw reading as a last resort, only when it looks like a name (Latin wordmark or a Korean line with CC/골프/클럽…)
-    if (!r.club && r.logo && clubSrc !== 'ask' && (!/[가-힣]/.test(r.logo) || /CC|GC|골프|컨트리|클럽|리조트/i.test(r.logo))) { r.club = r.logo; clubSrc = 'logo'; }
-    if (!r.club) { r.club = r.courses.map(c => S.clubMap[c.name]).find(Boolean) || ''; if (r.club) clubSrc = 'memo'; }
+    const parBad = new Set(warn.filter(w => /-par-/.test(w)).map(w => +w.split('-')[0]));
+    const guess = clubGuess(r, dict, null, parBad);
+    r.club = guess.club;
     let bad = 0;
     card.forEach((cs, ci) => cs.forEach((t, pi) => { if (t != null && sum(r.players[pi].scores[ci]) !== t) bad++; }));
     notes.unshift(bad || warn.length
@@ -2676,13 +2773,9 @@ const OCR = (() => {
       : '✓ 모든 줄의 합계가 스코어카드와 일치합니다. 골프장명·날짜만 확인 후 저장하세요.');
     if (bad) notes.push(...parNotes); // a misread PAR total only matters when the rows don't add up
     if (!res.top?.date) notes.push('⚠️ 날짜를 읽지 못해 선택한 날짜로 설정했습니다.');
-    if (clubSrc === 'ask') notes.push(`카드에서 "${r.logo}"만 읽혀 골프장을 확정하지 못했습니다. 골프장 칸 아래 후보에서 고르거나 입력해 주세요.`);
-    if (clubSrc === 'dict') notes.push(`골프장명은 카드의 글자로 전국 골프장 목록에서 찾은 "${r.club}"입니다. 다르면 아래 후보를 누르거나 직접 고쳐주세요.`);
-    if (clubSrc === 'logo') notes.push(`골프장명은 로고에서 읽은 "${r.logo}"입니다. 원하는 이름(예: 한글)으로 고쳐 저장하면 다음부터 같은 로고는 그 이름으로 입력됩니다.`);
-    if (!r.club && clubSrc !== 'ask') notes.push('골프장명을 입력하면 다음부터 같은 로고·코스명으로 자동 입력됩니다.');
+    const clubMsg = clubNote(guess); notes.push(clubMsg);
     notes.ok = !bad && !warn.length;
-    const clubSuggest = dict.filter(d => d.score >= 0.55).slice(0, clubSrc === 'ask' ? 8 : 4).map(d => d.name);
-    return { r, warn, notes, card, mode: isRel ? 'rel' : 'abs', clubSuggest };
+    return { r, warn, notes, card, mode: isRel ? 'rel' : 'abs', clubSuggest: guess.cands, dict, clubMsg, parBad };
   }
   // first run: download the engine + Korean/English data in the background so recognition later works offline
   let warming = false;
@@ -2703,7 +2796,7 @@ async function recognizeFile(f, progress) {
   try {
     const res = await OCR.recognize(f, progress);
     const x = OCR.toRound(res, S.selected, S.settings.myName);
-    return { r: x.r, opts: { warn: x.warn, notes: x.notes, card: x.card, mode: x.mode, clubSuggest: x.clubSuggest } };
+    return { r: x.r, opts: { warn: x.warn, notes: x.notes, card: x.card, mode: x.mode, clubSuggest: x.clubSuggest, dict: x.dict, clubMsg: x.clubMsg, parBad: x.parBad } };
   } catch (err) {
     const b = blankRound();
     try {
@@ -2725,6 +2818,11 @@ $('#fileIn').onchange = async e => {
     const dup = x.r.time && S.rounds.find(o => o.date === x.r.date && o.time === x.r.time);
     if (dup) { x.opts.notes = x.opts.notes || []; x.opts.notes.unshift(`⚠️ ${x.r.date} ${x.r.time} 기록이 이미 있습니다. 같은 카드라면 ${i + 1 < n ? '건너뛰기' : '취소'}를 누르세요.`); x.opts.notes.ok = false; }
     if (!S.settings.myName && x.r.players.some(p => p.name)) await askWhoAmI(x.r);
+    if (i > 0 && x.opts.dict) { // cards saved earlier in this batch now count too
+      const g = clubGuess(x.r, x.opts.dict, null, x.opts.parBad), msg = clubNote(g);
+      x.r.club = g.club; x.opts.clubSuggest = g.cands;
+      const k = x.opts.notes.indexOf(x.opts.clubMsg); if (k >= 0) x.opts.notes[k] = msg; x.opts.clubMsg = msg;
+    }
     const result = await openEditor(x.r, { ...x.opts, tag: n > 1 ? ` (${i + 1}/${n})` : '', remaining: n - i - 1 });
     if (result === 'saved') saved++;
   }
@@ -2940,7 +3038,7 @@ const ONBOARD = (() => {
     ['폰을 바꾸면요?', '기존 폰에서 ⚙︎ 설정 → 백업 내보내기, 새 폰에서 백업 가져오기를 하면 그대로 옮겨져요. 사진·영상까지 옮기려면 ⚙︎ 설정의 <b>백업에 사진·영상 포함</b>을 켜고 내보내세요.'],
     ['어떤 스코어카드를 읽을 수 있나요?', '스마트스코어, 골프존 등 홀 번호·PAR·타수 줄이 있는 표 형식이면 대부분 읽어요. 사진은 표가 반듯하고 선명하게 나오도록 찍거나 캡처한 이미지를 쓰면 가장 정확해요.'],
     ['인식이 틀렸어요', '저장 전 화면에서 틀린 칸을 눌러 고치면 돼요. 저장 후에도 일간 화면의 편집으로 고칠 수 있어요. 합계가 카드와 다르면 빨간색으로 알려줘요.'],
-    ['골프장 이름이 이상해요', '후보 버튼을 누르거나 직접 고쳐 저장하면, 같은 로고·코스의 카드는 다음부터 자동으로 그 이름이 들어가요.'],
+    ['골프장 이름이 이상해요', '확실하지 않으면 칸을 비우고 <b>후보를 가능성 높은 순</b>으로 보여줘요. 골라서 저장하면 그 골프장의 <b>코스 이름과 홀별 PAR</b>을 기억해서, 27·36홀처럼 코스 조합이 달라도 다음부터 자동으로 들어가요. 골프장 칸에 일부(벨라)나 초성(ㅂㄹㅅㅌ)만 쳐도 찾아요.'],
     ['18홀 넘게 쳤어요 (27홀)', '편집 화면 아래 <b>＋ 9홀 코스 추가</b>로 코스를 더 붙일 수 있어요.'],
     ['동반자가 박** 처럼 나와요', '⚙︎ 설정 → 자주하는 동반자 이름 규칙에 함께 치는 사람들을 등록하면 성이 모두 맞을 때 실명으로 바뀌어요.'],
     ['사진·영상도 남길 수 있나요?', '라운드 편집 화면의 <b>그날의 사진·영상 · 메모</b>에서 추가해요. 사진은 용량을 줄여 저장하고, 영상은 10초 이내만 올릴 수 있어요.'],
