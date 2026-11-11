@@ -447,6 +447,22 @@ table.ed td.t{min-width:40px;text-align:center;font-weight:800;font-size:14px}
 .vw-toast{position:absolute;left:50%;bottom:14px;transform:translate(-50%,10px);background:var(--text);color:var(--card);font-size:10px;font-weight:700;padding:6px 10px;border-radius:999px;white-space:nowrap;opacity:0;z-index:4}
 .play .vw-toast{animation:vwToast 11s infinite}
 @keyframes vwToast{0%,79%{opacity:0;transform:translate(-50%,10px)}82%,92%{opacity:1;transform:translate(-50%,0)}95%,100%{opacity:0}}
+/* year / month / day wheel picker (tap the title) */
+.top h1.pick{cursor:pointer}.top h1.pick::after{content:"▾";font-size:12px;color:var(--muted);margin-left:5px;vertical-align:2px}
+.dp{position:fixed;inset:0;z-index:60;background:rgba(0,0,0,.45);display:flex;align-items:flex-end;justify-content:center}
+.dp-box{width:100%;max-width:520px;background:var(--card);border-radius:18px 18px 0 0;padding-bottom:calc(14px + env(safe-area-inset-bottom));animation:dpUp .22s ease-out}
+@keyframes dpUp{from{transform:translateY(40px);opacity:.4}}
+.dp-head{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:1px solid var(--line)}
+.dp-head b{font-size:16px}.dp-head button{color:var(--accent);font-weight:700;font-size:16px;padding:6px}.dp-head .dp-x{color:var(--muted);font-weight:600}
+.dp-wheels{position:relative;display:flex;height:220px;margin:8px 14px 0}
+.dp-band{position:absolute;left:0;right:0;top:90px;height:40px;background:var(--bg);border-radius:10px;pointer-events:none}
+.dp-col{flex:1;overflow-y:auto;scroll-snap-type:y mandatory;position:relative;z-index:1;scrollbar-width:none;overscroll-behavior:contain;-webkit-mask-image:linear-gradient(transparent,#000 32%,#000 68%,transparent);mask-image:linear-gradient(transparent,#000 32%,#000 68%,transparent)}
+.dp-col::-webkit-scrollbar{display:none}
+.dp-col i{display:block;height:40px;line-height:40px;text-align:center;font-style:normal;font-size:18px;scroll-snap-align:center;color:var(--muted);cursor:pointer}
+.dp-col i.on{color:var(--text);font-weight:800}
+.dp-col i.has::after{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--accent);margin-left:5px;vertical-align:3px}
+.dp-col .pad{height:90px}
+.dp-note{text-align:center;font-size:12px;color:var(--muted);margin:6px 0 0}
 /* empty-state nudge */
 .fab.nudge{animation:pulse 1.6s ease-in-out infinite}
 #installBar.pulse{animation:barGlow 1.6s ease-in-out infinite}
@@ -679,7 +695,7 @@ async function thumbInfo(id) { // { url, video } for grid tiles (video → poste
   return { url: PHOTO_URLS.get(k) || null, video };
 }
 const MAX_VIDEO_SEC = 10;
-const APP_VERSION = '2026.11.11-v20';
+const APP_VERSION = '2026.11.11-v21';
 // video poster: a frame near the start, ≤ 480px
 // video length straight from the MP4/MOV header (moov → mvhd); works even when the browser won't preload the video (iPhone Safari)
 async function movDuration(file) {
@@ -1064,6 +1080,7 @@ function render() {
   document.querySelectorAll('#viewSeg button').forEach(b => b.classList.toggle('on', b.dataset.v === S.view));
   const st = S.view === 'stats';
   ['#prev', '#next', '#todayBtn'].forEach(q => $(q).style.visibility = st ? 'hidden' : '');
+  $('#title').classList.toggle('pick', !st);
   if (S.view === 'month') renderMonth(); else if (st) renderStats(); else renderDay();
   if (typeof updateNudge === 'function') updateNudge();
 }
@@ -1344,6 +1361,54 @@ function move(delta) {
 $('#prev').onclick = () => move(-1);
 $('#next').onclick = () => move(1);
 $('#todayBtn').onclick = () => { const t = new Date(); S.selected = ymd(t); S.cursor = new Date(t.getFullYear(), t.getMonth(), 1); render(); };
+/* year / month / day wheel picker: tap the title */
+function openDatePicker() {
+  if (S.view === 'stats') return;
+  const H = 40, cur = parseYmd(S.selected), nowY = new Date().getFullYear();
+  const maxY = Math.max(nowY + 1, ...S.rounds.map(r => +String(r.date).slice(0, 4) || 0));
+  const years = []; for (let v = 2015; v <= maxY; v++) years.push(v);
+  let y = cur.getFullYear(), m = cur.getMonth() + 1, d = cur.getDate();
+  if (S.view === 'month' && (S.cursor.getFullYear() !== y || S.cursor.getMonth() + 1 !== m)) { y = S.cursor.getFullYear(); m = S.cursor.getMonth() + 1; d = 1; }
+  y = Math.min(Math.max(y, 2015), maxY);
+  const played = new Set(S.rounds.map(r => r.date));
+  const el = document.createElement('div'); el.className = 'dp';
+  el.innerHTML = `<div class="dp-box"><div class="dp-head"><button class="dp-x">취소</button><b>날짜 선택</b><button class="dp-ok">이동</button></div>
+    <div class="dp-wheels"><div class="dp-band"></div><div class="dp-col" data-c="y"></div><div class="dp-col" data-c="m"></div><div class="dp-col" data-c="d"></div></div>
+    <p class="dp-note"><span style="color:var(--accent)">●</span> 기록이 있는 날</p></div>`;
+  document.body.appendChild(el);
+  const col = c => el.querySelector(`[data-c="${c}"]`);
+  const days = () => new Date(y, m, 0).getDate();
+  const fill = (c, vals, sel, fmt, has) => {
+    const k = col(c);
+    k.innerHTML = '<div class="pad"></div>' + vals.map(v => `<i data-v="${v}" class="${v === sel ? 'on' : ''} ${has && has(v) ? 'has' : ''}">${fmt(v)}</i>`).join('') + '<div class="pad"></div>';
+    k.scrollTop = Math.max(0, vals.indexOf(sel)) * H;
+  };
+  const monthHas = mm => S.rounds.some(r => r.date.startsWith(`${y}-${pad(mm)}`));
+  const drawM = () => fill('m', [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], m, v => v + '월', monthHas);
+  const drawD = () => { d = Math.min(d, days()); fill('d', Array.from({ length: days() }, (_, i) => i + 1), d, v => v + '일', v => played.has(`${y}-${pad(m)}-${pad(v)}`)); };
+  fill('y', years, y, v => v + '년', v => S.rounds.some(r => r.date.startsWith(v + '-'))); drawM(); drawD();
+  // settle on the row in the band once scrolling stops
+  el.querySelectorAll('.dp-col').forEach(k => {
+    let t = null;
+    k.addEventListener('scroll', () => { clearTimeout(t); t = setTimeout(() => {
+      const items = [...k.querySelectorAll('i')], i = Math.min(items.length - 1, Math.max(0, Math.round(k.scrollTop / H))), v = +items[i].dataset.v;
+      items.forEach((it, j) => it.classList.toggle('on', j === i));
+      const c = k.dataset.c;
+      if (c === 'y' && v !== y) { y = v; drawM(); drawD(); }
+      else if (c === 'm' && v !== m) { m = v; drawD(); }
+      else if (c === 'd') d = v;
+    }, 110); }, { passive: true });
+    k.addEventListener('click', e => { const it = e.target.closest('i'); if (!it) return; const items = [...k.querySelectorAll('i')]; k.scrollTo({ top: items.indexOf(it) * H, behavior: 'smooth' }); });
+  });
+  const close = () => el.remove();
+  el.addEventListener('click', e => { if (e.target === el) close(); });
+  el.querySelector('.dp-x').onclick = close;
+  el.querySelector('.dp-ok').onclick = () => {
+    S.selected = `${y}-${pad(m)}-${pad(d)}`; S.cursor = new Date(y, m - 1, 1);
+    close(); render();
+  };
+}
+$('#title').onclick = openDatePicker;
 $('#viewSeg').onclick = e => { const v = e.target.dataset.v; if (!v) return; S.view = v; saveUi(); render(); };
 $('#main').addEventListener('click', async e => {
   const yc = e.target.closest('[data-year]'); if (yc) { S.statYear = yc.dataset.year; S.clubAll = false; render(); return; }
