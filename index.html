@@ -463,6 +463,22 @@ table.ed td.t{min-width:40px;text-align:center;font-weight:800;font-size:14px}
 .dp-col i.has::after{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--accent);margin-left:5px;vertical-align:3px}
 .dp-col .pad{height:90px}
 .dp-note{text-align:center;font-size:12px;color:var(--muted);margin:6px 0 0}
+/* club search: rounds per club */
+.cs-in{width:100%;font-size:17px;padding:12px 14px;border-radius:12px;margin-bottom:12px}
+.cs-chips{display:flex;flex-wrap:wrap;gap:6px}
+.cs-chips button{border:1px solid var(--line);background:var(--card);border-radius:999px;padding:6px 12px;font-size:14px;font-weight:600}
+.cs-chips button small{color:var(--accent);font-weight:800;margin-left:4px}
+.cs-cap{font-size:12px;color:var(--muted);font-weight:700;margin:4px 2px 8px}
+.cs-club{background:var(--card);border-radius:14px;padding:12px 12px 4px;margin-bottom:12px}
+.cs-hd{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.cs-hd b{font-size:17px}.cs-hd em{font-style:normal;color:var(--accent);font-weight:800;font-size:15px;white-space:nowrap}
+.cs-sum{font-size:12px;color:var(--muted);margin:3px 0 8px}
+.cs-row{display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:10px 2px;border-top:1px solid var(--line)}
+.cs-row .m{flex:1;min-width:0}.cs-row .d{font-weight:700;font-size:14px}
+.cs-row .c{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cs-row .s{text-align:right;white-space:nowrap}.cs-row .s b{font-size:18px;color:var(--accent);font-weight:800}.cs-row .s small{display:block;font-size:11px;color:var(--muted)}
+.cs-row .go{color:var(--muted);font-size:18px}
+.cs-none{text-align:center;color:var(--muted);padding:30px 0;font-size:14px}
 /* empty-state nudge */
 .fab.nudge{animation:pulse 1.6s ease-in-out infinite}
 #installBar.pulse{animation:barGlow 1.6s ease-in-out infinite}
@@ -629,7 +645,7 @@ details.st[open] > summary h3::after{content:"⌃"}
     <div class="seg" style="margin:0;flex:1;max-width:200px" id="viewSeg">
       <button data-v="month">월간</button><button data-v="day">일간</button><button data-v="stats">통계</button>
     </div>
-    <div class="rbtns"><button class="icon-btn help-btn" id="helpBtn" aria-label="도움말">?</button><button class="icon-btn" id="settingsBtn" aria-label="설정"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button></div>
+    <div class="rbtns"><button class="icon-btn" id="searchBtn" aria-label="골프장 검색"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg></button><button class="icon-btn help-btn" id="helpBtn" aria-label="도움말">?</button><button class="icon-btn" id="settingsBtn" aria-label="설정"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button></div>
   </div>
 </header>
 <div id="installBar" class="hidden"></div>
@@ -695,7 +711,7 @@ async function thumbInfo(id) { // { url, video } for grid tiles (video → poste
   return { url: PHOTO_URLS.get(k) || null, video };
 }
 const MAX_VIDEO_SEC = 10;
-const APP_VERSION = '2026.11.11-v23';
+const APP_VERSION = '2026.11.11-v24';
 // video poster: a frame near the start, ≤ 480px
 // video length straight from the MP4/MOV header (moov → mvhd); works even when the browser won't preload the video (iPhone Safari)
 async function movDuration(file) {
@@ -1412,6 +1428,49 @@ function openDatePicker() {
   };
 }
 $('#title').onclick = openDatePicker;
+/* ================= club search: "*검색어*" over saved rounds → rounds per club, tap → that day ================= */
+const flatName = n => String(n || '').replace(/\s+/g, '').toLowerCase();
+function openClubSearch() {
+  $('#layer').innerHTML = `<div class="sheet" id="cs"><div class="sheet-head"><span style="width:60px"></span><h3>골프장 검색</h3><button id="csClose">닫기</button></div>
+    <div class="sheet-body"><input type="search" id="csIn" class="cs-in" placeholder="골프장 이름 일부 (예: 남춘)" autocomplete="off"><div id="csOut"></div></div></div>`;
+  // group my rounds by club (spelling variants of the same club merged)
+  const groups = new Map();
+  S.rounds.filter(r => r.club).forEach(r => { const k = clubKey(r.club); if (!groups.has(k)) groups.set(k, { name: k, alias: new Set(), rs: [] }); const g = groups.get(k); g.alias.add(flatName(r.club)); g.alias.add(flatName(k)); g.rs.push(r); });
+  const all = [...groups.values()].sort((a, b) => b.rs.length - a.rs.length || a.name.localeCompare(b.name));
+  const row = r => {
+    const mi = meIdx(r), t = myTotal(r), d = parseYmd(r.date), dif = t ? t - playedPar(r, mi) : null;
+    const co = r.players.map((p, i) => i === mi ? null : playerTotal(r, i)).filter(v => v);
+    const crs = r.courses.map(c => c.name).filter(Boolean).join('/');
+    const icons = ((r.photos || []).length ? '📷' : '') + (r.memo ? '📝' : '');
+    return `<button class="cs-row" data-goto="${r.date}"><span class="m"><div class="d">${fmtDate(r.date)} (${DOW[d.getDay()]})${r.time ? ' ' + esc(r.time) : ''} ${icons}</div>
+      <div class="c">${[crs && esc(crs), co.length ? '동반 ' + co.join('·') : ''].filter(Boolean).join(' · ') || '&nbsp;'}</div></span>
+      <span class="s"><b>${t || '-'}</b><small>${dif == null ? '' : fmtDiff(dif)}${r.courses.length < 2 ? ' · 9홀' : ''}</small></span><span class="go">›</span></button>`;
+  };
+  const draw = () => {
+    const q = flatName($('#csIn').value), out = $('#csOut');
+    if (!q) {
+      out.innerHTML = all.length ? `<div class="cs-cap">내가 간 골프장 ${all.length}곳 · 많이 간 순</div><div class="cs-chips">${all.map(g => `<button data-q="${esc(g.name)}">${esc(g.name)}<small>${g.rs.length}</small></button>`).join('')}</div>`
+        : '<div class="cs-none">아직 저장된 라운드가 없어요.</div>';
+      return;
+    }
+    const hits = all.filter(g => [...g.alias].some(a => a.includes(q)));
+    if (!hits.length) { out.innerHTML = `<div class="cs-none">‘${esc($('#csIn').value.trim())}’가 들어간 골프장 기록이 없어요.</div>`; return; }
+    out.innerHTML = hits.map(g => {
+      const rs = g.rs.slice().sort((a, b) => (b.date + (b.time || '')).localeCompare(a.date + (a.time || '')));
+      const full = rs.filter(r => r.courses.length >= 2).map(myTotal).filter(v => v > 0);
+      const sumTxt = [full.length ? `평균 ${fx(avg(full))}` : '', full.length ? `베스트 ${Math.min(...full)}` : '', `최근 ${fmtDate(rs[0].date)}`].filter(Boolean).join(' · ');
+      return `<section class="cs-club"><div class="cs-hd"><b>${esc(g.name)}</b><em>${rs.length}회 라운딩</em></div><div class="cs-sum">${sumTxt}</div>${rs.map(row).join('')}</section>`;
+    }).join('');
+  };
+  $('#csIn').oninput = draw;
+  $('#csClose').onclick = closeLayer;
+  $('#csOut').onclick = e => {
+    const c = e.target.closest('[data-q]'); if (c) { $('#csIn').value = c.dataset.q; draw(); return; }
+    const g = e.target.closest('[data-goto]'); if (g) { closeLayer(); goDay(g.dataset.goto); }
+  };
+  draw(); setTimeout(() => $('#csIn').focus(), 50);
+}
+$('#searchBtn').onclick = openClubSearch;
 $('#viewSeg').onclick = e => { const v = e.target.dataset.v; if (!v) return; S.view = v; saveUi(); render(); };
 $('#main').addEventListener('click', async e => {
   const yc = e.target.closest('[data-year]'); if (yc) { S.statYear = yc.dataset.year; S.clubAll = false; render(); return; }
@@ -3107,6 +3166,7 @@ const ONBOARD = (() => {
     ['어떤 스코어카드를 읽을 수 있나요?', '스마트스코어, 골프존 등 홀 번호·PAR·타수 줄이 있는 표 형식이면 대부분 읽어요. 사진은 표가 반듯하고 선명하게 나오도록 찍거나 캡처한 이미지를 쓰면 가장 정확해요.'],
     ['인식이 틀렸어요', '저장 전 화면에서 틀린 칸을 눌러 고치면 돼요. 저장 후에도 일간 화면의 편집으로 고칠 수 있어요. 합계가 카드와 다르면 빨간색으로 알려줘요.'],
     ['골프장 이름이 이상해요', '확실하지 않으면 칸을 비우고 <b>후보를 가능성 높은 순</b>으로 보여줘요. 골라서 저장하면 그 골프장의 <b>코스 이름과 홀별 PAR</b>을 기억해서, 27·36홀처럼 코스 조합이 달라도 다음부터 자동으로 들어가요. 골프장 칸에 일부(벨라)나 초성(ㅂㄹㅅㅌ)만 쳐도 찾아요.'],
+    ['한 골프장 기록만 모아 보고 싶어요', '위쪽 <b>🔍</b>를 누르고 골프장 이름 일부(예: 남춘)를 입력하면 그 골프장의 라운딩 횟수와 날짜별 스코어가 나와요. 줄을 누르면 그날 화면으로 바로 가요.'],
     ['18홀 넘게 쳤어요 (27홀)', '편집 화면 아래 <b>＋ 9홀 코스 추가</b>로 코스를 더 붙일 수 있어요.'],
     ['동반자가 박** 처럼 나와요', '⚙︎ 설정 → 자주하는 동반자 이름 규칙에 함께 치는 사람들을 등록하면 성이 모두 맞을 때 실명으로 바뀌어요.'],
     ['사진·영상도 남길 수 있나요?', '라운드 편집 화면의 <b>그날의 사진·영상 · 메모</b>에서 추가해요. 사진은 용량을 줄여 저장하고, 영상은 10초 이내만 올릴 수 있어요.'],
