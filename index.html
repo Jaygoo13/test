@@ -711,7 +711,7 @@ async function thumbInfo(id) { // { url, video } for grid tiles (video → poste
   return { url: PHOTO_URLS.get(k) || null, video };
 }
 const MAX_VIDEO_SEC = 10;
-const APP_VERSION = '2026.11.11-v24';
+const APP_VERSION = '2026.11.11-v25';
 // video poster: a frame near the start, ≤ 480px
 // video length straight from the MP4/MOV header (moov → mvhd); works even when the browser won't preload the video (iPhone Safari)
 async function movDuration(file) {
@@ -1222,7 +1222,7 @@ function renderStats() {
   const Y = S.statYear, scope = Y === 'all' ? all : all.filter(r => r.date.startsWith(Y));
   const full = scope.filter(isFull), allFull = all.filter(isFull);
   let h = `<div class="chips-row">${['all', ...years].map(y => `<button class="ychip ${y === Y ? 'on' : ''}" data-year="${y}">${y === 'all' ? '전체' : y}</button>`).join('')}</div>`;
-  h += heroCard(all, allFull, full, Y);
+  h += heroCard(all, allFull, scope, full, Y);
   h += bucketCard(full);
   h += yearCard(all);
   h += trendCard(all, Y);
@@ -1247,13 +1247,16 @@ function loHi(list) {
   const s = list.slice().sort((a, b) => myTotal(a) - myTotal(b) || a.date.localeCompare(b.date));
   return [s[0], s[s.length - 1]];
 }
-function heroCard(all, allFull, full, Y) {
+function heroCard(all, allFull, scope, full, Y) {
   const name = S.settings.myName || (all[0] && all[0].players[meIdx(all[0])].name) || '나';
   const y0 = +all[0].date.slice(0, 4), y1 = +all[all.length - 1].date.slice(0, 4), span = y1 - y0 + 1;
   const [lo, hi] = loHi(allFull), [ylo, yhi] = loHi(full);
-  return `<section class="st"><div class="hero"><div class="who">${esc(name)}님은 ${span > 1 ? `${span}년 동안` : `${y0}년에`}</div>
-    <div class="big">총 ${all.length}<small> 라운드</small></div>
-    <div class="who">18홀 평균 <b style="color:var(--text)">${fx(avg(allFull.map(myTotal)), 2)}</b>타</div></div>
+  const yr = Y !== 'all'; // a year chip: totals for that year only
+  const when = yr ? `${Y}년에` : span > 1 ? `${span}년 동안` : `${y0}년에`;
+  return `<section class="st"><div class="hero"><div class="who">${esc(name)}님은 ${when}</div>
+    <div class="big">총 ${(yr ? scope : all).length}<small> 라운드</small></div>
+    <div class="who">18홀 평균 <b style="color:var(--text)">${fx(avg((yr ? full : allFull).map(myTotal)), 2)}</b>타</div>
+    ${yr ? `<div class="who" style="font-size:12px;margin-top:4px">전체 ${all.length}라운드 중</div>` : ''}</div>
     ${mmBlock('전체 기간', lo, hi)}
     ${Y !== 'all' ? mmBlock(`${Y}년`, ylo, yhi) : ''}</section>`;
 }
